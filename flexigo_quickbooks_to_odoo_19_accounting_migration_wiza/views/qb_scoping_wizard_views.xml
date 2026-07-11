@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- FR-039: Scoping Questionnaire Wizard Form View -->
+        <record id="qb_scoping_wizard_form" model="ir.ui.view">
+            <field name="name">qb.scoping.wizard.form</field>
+            <field name="model">qb.scoping.wizard</field>
+            <field name="arch" type="xml">
+                <form string="QuickBooks Migration Scoping Questionnaire">
+                    <sheet>
+                        <h1>Migration Scoping Questionnaire</h1>
+                        <p>This questionnaire captures the scope and characteristics of your QuickBooks migration to guide engagement planning.</p>
+
+                        <group>
+                            <group>
+                                <field name="source_type" required="1"/>
+                                <field name="company_name" required="1"/>
+                                <field name="company_size"/>
+                            </group>
+                            <group>
+                                <field name="estimated_transaction_count"/>
+                                <field name="history_depth_months"/>
+                            </group>
+                        </group>
+
+                        <separator string="Source System Configuration"/>
+                        <group>
+                            <group>
+                                <field name="multicurrency_enabled"/>
+                                <field name="class_tracking_enabled"/>
+                            </group>
+                            <group>
+                                <field name="location_tracking_enabled"/>
+                                <field name="custom_lists_needed"/>
+                            </group>
+                        </group>
+
+                        <separator string="Migration Preferences"/>
+                        <group>
+                            <field name="migrate_employees"/>
+                            <field name="migrate_custom_fields"/>
+                            <field name="validate_opening_balance"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_generate_summary" string="Generate Scoping Summary" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- FR-039: Scoping Summary View -->
+        <record id="qb_scoping_summary_form" model="ir.ui.view">
+            <field name="name">qb.scoping.summary.form</field>
+            <field name="model">qb.scoping.summary</field>
+            <field name="arch" type="xml">
+                <form string="QuickBooks Migration Scoping Summary">
+                    <sheet>
+                        <h1>Migration Scoping Summary</h1>
+                        <p class="text-muted">This summary captures the engagement scope for your QuickBooks to Odoo migration.</p>
+
+                        <group>
+                            <group>
+                                <field name="source_type" readonly="1"/>
+                                <field name="company_name" readonly="1"/>
+                                <field name="company_size" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="estimated_transaction_count" readonly="1"/>
+                                <field name="history_depth_months" readonly="1"/>
+                                <field name="scope_complexity" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <separator string="Recommended Engagement Plan"/>
+                        <notebook>
+                            <page string="Project Overview">
+                                <field name="engagement_summary" readonly="1" nolabel="1"/>
+                            </page>
+                            <page string="Data Migration Scope">
+                                <field name="data_scope_detail" readonly="1" nolabel="1"/>
+                            </page>
+                            <page string="Estimated Timeline">
+                                <field name="timeline_estimate" readonly="1" nolabel="1"/>
+                            </page>
+                            <page string="Next Steps">
+                                <field name="next_steps" readonly="1" nolabel="1"/>
+                            </page>
+                        </notebook>
+
+                        <div class="alert alert-info mt-3" role="alert">
+                            <strong>Next Step:</strong> Share this summary with FlexigoTech to discuss migration timeline, pricing, and implementation approach. Visit <a href="https://flexigotech.com/services" target="_blank">flexigotech.com/services</a> to request a consultation.
+                        </div>
+                    </sheet>
+                    <footer>
+                        <button name="action_export_summary" string="Export as PDF" type="object" class="btn-secondary"/>
+                        <button string="Close" class="btn-primary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action to launch the scoping wizard -->
+        <record id="action_qb_scoping_wizard" model="ir.actions.act_window">
+            <field name="name">QuickBooks Migration Scoping</field>
+            <field name="res_model">qb.scoping.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="qb_scoping_wizard_form"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- FR-016: QuickBooks Default Mapping -->
+        <!-- Note: migration.mapping.set records are project-scoped and created during
+             engagement scoping, not at module install. The prior attempt to create a
+             starter record failed because:
+             1. migration.mapping.set requires project_id (no global default)
+             2. Field 'source_type' does not exist on the model
+             Mapping configuration is a runtime workflow activity.
+        -->
+    </data>
+</odoo>

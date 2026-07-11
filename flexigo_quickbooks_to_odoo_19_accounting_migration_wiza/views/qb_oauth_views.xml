@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- FR-002: OAuth Error Template -->
+    <template id="qb_oauth_error" name="QuickBooks OAuth Error">
+        <html>
+            <head>
+                <title>QuickBooks OAuth Error</title>
+                <meta charset="UTF-8"/>
+            </head>
+            <body style="font-family: sans-serif; padding: 40px;">
+                <div style="max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 24px; border-radius: 4px;">
+                    <h3 style="color: #d9534f;">QuickBooks OAuth Error</h3>
+                    <p><strong>Error:</strong> <t t-esc="error"/></p>
+                    <p><t t-esc="error_description"/></p>
+                    <a href="/web" style="display:inline-block;padding:8px 16px;background:#0069d9;color:#fff;text-decoration:none;border-radius:4px;">Return to Odoo</a>
+                </div>
+            </body>
+        </html>
+    </template>
+</odoo>
