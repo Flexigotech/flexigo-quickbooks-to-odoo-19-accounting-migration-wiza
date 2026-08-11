@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<t t-name="qb_oauth_error">
+    <t t-call="website.layout">
+        <div class="container mt-5">
+            <div class="alert alert-danger" role="alert">
+                <h3>QuickBooks OAuth Error</h3>
+                <p><strong>Error:</strong> <t t-esc="error"/></p>
+                <p t-if="error_description"><t t-esc="error_description"/></p>
+                <a href="/web" class="btn btn-primary mt-3">Return to Odoo</a>
+            </div>
+        </div>
+    </t>
+</t>
