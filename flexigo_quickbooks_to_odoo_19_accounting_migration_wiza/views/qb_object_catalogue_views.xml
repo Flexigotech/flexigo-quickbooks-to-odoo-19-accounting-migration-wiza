@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- FR-013: QuickBooks Object Catalogue Views -->
+
+    <!-- List View -->
+    <record id="view_qb_object_catalogue_list" model="ir.ui.view">
+        <field name="name">qb.object.catalogue.list</field>
+        <field name="model">qb.object.catalogue</field>
+        <field name="arch" type="xml">
+            <list string="QB Object Catalogue">
+                <field name="name"/>
+                <field name="object_type"/>
+                <field name="is_enabled"/>
+                <field name="extraction_method"/>
+                <field name="qbo_entity_name"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_qb_object_catalogue_form" model="ir.ui.view">
+        <field name="name">qb.object.catalogue.form</field>
+        <field name="model">qb.object.catalogue</field>
+        <field name="arch" type="xml">
+            <form string="QB Object Catalogue Entry">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="object_type"/>
+                        <field name="qbo_entity_name"/>
+                        <field name="qbo_reports_endpoint"/>
+                    </group>
+                    <group>
+                        <field name="is_enabled"/>
+                        <field name="extraction_method"/>
+                        <field name="target_model"/>
+                        <field name="page_size"/>
+                    </group>
+                    <group string="Filters">
+                        <field name="filter_open_only"/>
+                        <field name="filter_active_only"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Extraction State">
+                        <field name="last_cursor"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_qb_object_catalogue" model="ir.actions.act_window">
+        <field name="name">QB Object Catalogue</field>
+        <field name="res_model">qb.object.catalogue</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

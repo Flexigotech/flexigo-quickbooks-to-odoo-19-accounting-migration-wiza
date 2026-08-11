@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- FR-013: Default QuickBooks Object Catalogue (27 entries) -->
+
+    <!-- 10: Company Info -->
+    <record id="qb_catalogue_company_info" model="qb.object.catalogue">
+        <field name="name">Company Info</field>
+        <field name="object_type">companyinfo</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">CompanyInfo</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 20: Currencies & Rates -->
+    <record id="qb_catalogue_exchange_rate" model="qb.object.catalogue">
+        <field name="name">Currencies &amp; Rates</field>
+        <field name="object_type">exchangerate</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">ExchangeRate</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 30: Chart of Accounts -->
+    <record id="qb_catalogue_account" model="qb.object.catalogue">
+        <field name="name">Chart of Accounts</field>
+        <field name="object_type">account</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Account</field>
+        <field name="target_model">account.account</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 40: Tax Codes -->
+    <record id="qb_catalogue_tax_code" model="qb.object.catalogue">
+        <field name="name">Tax Codes</field>
+        <field name="object_type">taxcode</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">TaxCode</field>
+        <field name="target_model">account.tax.group</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 40b: Tax Rates -->
+    <record id="qb_catalogue_tax_rate" model="qb.object.catalogue">
+        <field name="name">Tax Rates</field>
+        <field name="object_type">taxrate</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">TaxRate</field>
+        <field name="target_model">account.tax</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 50: Payment Terms -->
+    <record id="qb_catalogue_term" model="qb.object.catalogue">
+        <field name="name">Payment Terms</field>
+        <field name="object_type">term</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Term</field>
+        <field name="target_model">account.payment.term</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 55: Payment Methods -->
+    <record id="qb_catalogue_payment_method" model="qb.object.catalogue">
+        <field name="name">Payment Methods</field>
+        <field name="object_type">paymentmethod</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">PaymentMethod</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 60: Customers -->
+    <record id="qb_catalogue_customer" model="qb.object.catalogue">
+        <field name="name">Customers</field>
+        <field name="object_type">customer</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Customer</field>
+        <field name="target_model">res.partner</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 70: Vendors -->
+    <record id="qb_catalogue_vendor" model="qb.object.catalogue">
+        <field name="name">Vendors</field>
+        <field name="object_type">vendor</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Vendor</field>
+        <field name="target_model">res.partner</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 80: Employees (disabled by default) -->
+    <record id="qb_catalogue_employee" model="qb.object.catalogue">
+        <field name="name">Employees</field>
+        <field name="object_type">employee</field>
+        <field name="is_enabled">False</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Employee</field>
+        <field name="target_model">hr.employee</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 90: Inventory Items -->
+    <record id="qb_catalogue_item_inventory" model="qb.object.catalogue">
+        <field name="name">Inventory Items</field>
+        <field name="object_type">item</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Item</field>
+        <field name="target_model">product.product</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 130: Price Levels -->
+    <record id="qb_catalogue_price_level" model="qb.object.catalogue">
+        <field name="name">Price Levels</field>
+        <field name="object_type">pricelevel</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">PriceLevel</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 140: Open Invoices -->
+    <record id="qb_catalogue_invoice" model="qb.object.catalogue">
+        <field name="name">Open Invoices</field>
+        <field name="object_type">invoice</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">Invoice</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 150: Credit Memos -->
+    <record id="qb_catalogue_credit_memo" model="qb.object.catalogue">
+        <field name="name">Credit Memos</field>
+        <field name="object_type">creditmemo</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">CreditMemo</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 160: Open Bills -->
+    <record id="qb_catalogue_bill" model="qb.object.catalogue">
+        <field name="name">Open Bills</field>
+        <field name="object_type">bill</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">Bill</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 170: Vendor Credits -->
+    <record id="qb_catalogue_vendor_credit" model="qb.object.catalogue">
+        <field name="name">Vendor Credits</field>
+        <field name="object_type">vendorcredit</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">VendorCredit</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 180: Payments (with date filter) -->
+    <record id="qb_catalogue_payment" model="qb.object.catalogue">
+        <field name="name">Payments</field>
+        <field name="object_type">payment</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">Payment</field>
+        <field name="target_model">account.payment</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 190: Sales Receipts (with date filter) -->
+    <record id="qb_catalogue_sales_receipt" model="qb.object.catalogue">
+        <field name="name">Sales Receipts</field>
+        <field name="object_type">salesreceipt</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">SalesReceipt</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 200: Estimates -->
+    <record id="qb_catalogue_estimate" model="qb.object.catalogue">
+        <field name="name">Estimates</field>
+        <field name="object_type">estimate</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">Estimate</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 210: Purchase Orders -->
+    <record id="qb_catalogue_purchase_order" model="qb.object.catalogue">
+        <field name="name">Purchase Orders</field>
+        <field name="object_type">purchaseorder</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_open_only">True</field>
+        <field name="qbo_entity_name">PurchaseOrder</field>
+        <field name="target_model">purchase.order</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 220: Journal Entries (GL, with date filter) -->
+    <record id="qb_catalogue_journal_entry" model="qb.object.catalogue">
+        <field name="name">Journal Entries</field>
+        <field name="object_type">journalentry</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">JournalEntry</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 230: Deposits &amp; Transfers (with date filter) -->
+    <record id="qb_catalogue_deposit" model="qb.object.catalogue">
+        <field name="name">Deposits</field>
+        <field name="object_type">deposit</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">Deposit</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <record id="qb_catalogue_transfer" model="qb.object.catalogue">
+        <field name="name">Transfers</field>
+        <field name="object_type">transfer</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">Transfer</field>
+        <field name="target_model">account.move</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 240: Attachments -->
+    <record id="qb_catalogue_attachable" model="qb.object.catalogue">
+        <field name="name">Attachments</field>
+        <field name="object_type">attachable</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="qbo_entity_name">Attachable</field>
+        <field name="target_model">ir.attachment</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 250: Classes -->
+    <record id="qb_catalogue_class" model="qb.object.catalogue">
+        <field name="name">Classes</field>
+        <field name="object_type">class</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Class</field>
+        <field name="target_model">account.analytic.account</field>
+        <field name="page_size">1000</field>
+    </record>
+
+    <!-- 260: Locations/Departments -->
+    <record id="qb_catalogue_location" model="qb.object.catalogue">
+        <field name="name">Locations/Departments</field>
+        <field name="object_type">location</field>
+        <field name="is_enabled">True</field>
+        <field name="extraction_method">api</field>
+        <field name="filter_active_only">True</field>
+        <field name="qbo_entity_name">Department</field>
+        <field name="target_model">account.analytic.account</field>
+        <field name="page_size">1000</field>
+    </record>
+
+</odoo>
