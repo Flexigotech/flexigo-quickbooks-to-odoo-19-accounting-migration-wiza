@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- FR-006: QuickBooks Connection Views -->
+
+    <!-- List View -->
+    <record id="view_qb_connection_list" model="ir.ui.view">
+        <field name="name">qb.connection.list</field>
+        <field name="model">qb.connection</field>
+        <field name="arch" type="xml">
+            <tree string="QuickBooks Connections">
+                <field name="name"/>
+                <field name="connection_type"/>
+                <field name="is_sandbox"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_qb_connection_form" model="ir.ui.view">
+        <field name="name">qb.connection.form</field>
+        <field name="model">qb.connection</field>
+        <field name="arch" type="xml">
+            <form string="QuickBooks Connection">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="connection_type"/>
+                        <field name="is_sandbox"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_qb_connection" model="ir.actions.act_window">
+        <field name="name">QuickBooks Connections</field>
+        <field name="res_model">qb.connection</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>
