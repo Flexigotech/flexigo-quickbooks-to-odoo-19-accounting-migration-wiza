@@ -1,0 +1,105 @@
+WEBVTT
+
+STYLE
+::cue {
+  color: #000000;
+  background-color: rgba(255, 255, 255, .88);
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1em;
+  line-height: 1.3;
+}
+1
+00:00:00.000 --> 00:00:03.914
+Welcome to the QuickBooks to Odoo nineteen migration wizard.
+
+2
+00:00:03.914 --> 00:00:07.829
+Here we're setting up the connection.
+
+3
+00:00:07.829 --> 00:00:11.744
+You can choose QuickBooks Online, using OAuth, where we request permission to read your GL, AR, and AP.
+
+4
+00:00:11.744 --> 00:00:15.659
+Or QuickBooks Desktop, where you upload a QBX export file.
+
+5
+00:00:15.659 --> 00:00:19.574
+The wizard walks you through authentication or file selection, then validates that we can read your data.
+
+6
+00:00:23.696 --> 00:00:27.763
+Next, we configure how your QuickBooks accounts map to Odoo.
+
+7
+00:00:27.763 --> 00:00:31.829
+The wizard shows your QB account list and proposes mappings to Odoo GL accounts.
+
+8
+00:00:31.829 --> 00:00:35.895
+You can review, override, and save these mappings.
+
+9
+00:00:35.895 --> 00:00:39.962
+Mappings are versioned, so if you run the migration twice with different mappings, both runs are recorded separately.
+
+10
+00:00:46.186 --> 00:00:49.759
+Here we've extracted your QuickBooks GL.
+
+11
+00:00:49.759 --> 00:00:53.333
+The wizard shows a preview:
+
+12
+00:00:53.333 --> 00:00:56.906
+transaction count, date range, GL account coverage, and any validation warnings.
+
+13
+00:00:56.906 --> 00:01:00.480
+If you see issues, like missing accounts or unexpected balances, you can adjust mappings and re-extract.
+
+14
+00:01:00.480 --> 00:01:04.053
+Once you approve, the data is loaded into staging.
+
+15
+00:01:07.967 --> 00:01:11.547
+Before going live, the finance controller reviews reconciliation.
+
+16
+00:01:11.547 --> 00:01:15.128
+We show your QB trial balance and the Odoo trial balance side by side.
+
+17
+00:01:15.128 --> 00:01:18.708
+We highlight variances:
+
+18
+00:01:18.708 --> 00:01:22.289
+missing accounts, rounding differences, or mapping errors.
+
+19
+00:01:22.289 --> 00:01:25.869
+You sign off on each variance, and the reconciliation report is locked with your approval date and signature.
+
+20
+00:01:28.401 --> 00:01:32.423
+Once reconciliation is approved, you can go live.
+
+21
+00:01:32.423 --> 00:01:36.444
+All staged GL entries post to live Odoo accounts.
+
+22
+00:01:36.444 --> 00:01:40.466
+The migration run is archived, and all staging tables are marked immutable.
+
+23
+00:01:40.466 --> 00:01:44.488
+If you need to audit or prove what happened during migration, the archive is your evidence.
+
+24
+00:01:44.488 --> 00:01:48.509
+The run log shows the extract timestamp, record counts, and who executed the migration.

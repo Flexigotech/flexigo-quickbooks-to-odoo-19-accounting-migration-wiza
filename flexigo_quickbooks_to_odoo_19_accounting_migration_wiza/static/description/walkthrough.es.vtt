@@ -1,0 +1,105 @@
+WEBVTT
+
+STYLE
+::cue {
+  color: #000000;
+  background-color: rgba(255, 255, 255, .88);
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1em;
+  line-height: 1.3;
+}
+1
+00:00:00.000 --> 00:00:04.342
+Bienvenido al asistente de migración de QuickBooks a Odoo diecinueve.
+
+2
+00:00:04.342 --> 00:00:08.684
+Aquí estamos configurando la conexión.
+
+3
+00:00:08.684 --> 00:00:13.026
+Puedes elegir QuickBooks Online, usando OAuth, donde solicitamos permiso para leer tu GL, AR y AP.
+
+4
+00:00:13.026 --> 00:00:17.368
+O QuickBooks Desktop, donde cargas un archivo de exportación QBX.
+
+5
+00:00:17.368 --> 00:00:21.710
+El asistente te guía a través de la autenticación o selección de archivo, y luego valida que podamos leer tus datos.
+
+6
+00:00:23.696 --> 00:00:29.194
+A continuación, configuramos cómo tus cuentas de QuickBooks se asignan a Odoo.
+
+7
+00:00:29.194 --> 00:00:34.691
+El asistente muestra tu lista de cuentas de QB y propone asignaciones a cuentas de GL de Odoo.
+
+8
+00:00:34.691 --> 00:00:40.188
+Puedes revisar, anular y guardar estas asignaciones.
+
+9
+00:00:40.188 --> 00:00:45.686
+Las asignaciones están versionadas, por lo que si ejecutas la migración dos veces con diferentes asignaciones, ambas ejecuciones se registran por separado.
+
+10
+00:00:46.186 --> 00:00:50.442
+Aquí hemos extraído tu GL de QuickBooks.
+
+11
+00:00:50.442 --> 00:00:54.698
+El asistente muestra una vista previa:
+
+12
+00:00:54.698 --> 00:00:58.954
+cantidad de transacciones, rango de fechas, cobertura de cuenta GL y cualquier advertencia de validación.
+
+13
+00:00:58.954 --> 00:01:03.210
+Si ves problemas, como cuentas faltantes o saldos inesperados, puedes ajustar las asignaciones y volver a extraer.
+
+14
+00:01:03.210 --> 00:01:07.467
+Una vez que apruebes, los datos se cargan en staging.
+
+15
+00:01:07.967 --> 00:01:11.953
+Antes de pasar a producción, el controlador financiero revisa la reconciliación.
+
+16
+00:01:11.953 --> 00:01:15.940
+Mostramos tu saldo de prueba de QB y el saldo de prueba de Odoo lado a lado.
+
+17
+00:01:15.940 --> 00:01:19.927
+Destacamos varianzas:
+
+18
+00:01:19.927 --> 00:01:23.914
+cuentas faltantes, diferencias de redondeo o errores de asignación.
+
+19
+00:01:23.914 --> 00:01:27.901
+Apruebas cada varianza, y el informe de reconciliación se bloquea con tu fecha de aprobación y firma.
+
+20
+00:01:28.401 --> 00:01:33.498
+Una vez que se aprueba la reconciliación, puedes pasar a producción.
+
+21
+00:01:33.498 --> 00:01:38.595
+Todos los asientos de GL en staging se publican en las cuentas de Odoo activas.
+
+22
+00:01:38.595 --> 00:01:43.691
+La ejecución de la migración se archiva, y todas las tablas de staging se marcan como inmutables.
+
+23
+00:01:43.691 --> 00:01:48.788
+Si necesitas auditar o probar qué sucedió durante la migración, el archivo es tu evidencia.
+
+24
+00:01:48.788 --> 00:01:53.885
+El registro de ejecución muestra la marca de tiempo de extracción, los conteos de registros y quién ejecutó la migración.
