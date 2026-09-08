@@ -45,7 +45,7 @@ A wizard-driven, auditable, idempotent toolkit for extracting accounting data fr
 QuickBooks Online (via Intuit Accounting API) or QuickBooks Desktop (via export upload)
 and loading it into Odoo 19 with a repeatable, reconciled cutover process.
 
-This module is FREE (LGPL-3). The actual migration is delivered as a paid
+One-off purchase, no subscription. The actual migration is delivered as a paid
 FlexigoTech implementation service.
 
 For service enquiries: https://flexigotech.com/services
