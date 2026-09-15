@@ -1,0 +1,12 @@
+{
+  "module": "flexigo_quickbooks_to_odoo_19_accounting_migration_wiza",
+  "source": "odoo_sh_live_build",
+  "odoo_version": "19.0",
+  "build_url": "https://flexigotech-factory.odoo.com",
+  "build_db": "flexigobe-odoo-flexigobe-flexigotech-factory-33901498",
+  "build_id": "33901498",
+  "captured_at": "2026-06-23T00:43:27Z",
+  "captured_by": "capture-from-staging.sh",
+  "surfaces": 2,
+  "synthetic": false
+}

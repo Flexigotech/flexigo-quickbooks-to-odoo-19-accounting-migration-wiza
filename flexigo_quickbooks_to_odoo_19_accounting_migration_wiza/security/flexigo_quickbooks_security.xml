@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- FR-031–FR-034: Cutover runbook (freeze, delta, go/no-go, rollback) -->
+    <!-- FR-035: Access control - internal users read, migration managers full access -->
+    <!-- FR-036: GDPR data retention & archive (historical records, PII erasure) -->
+    <!-- FR-037: Historical archive for audit trail -->
+    <!-- FR-038: Security groups using Odoo 19 res.groups.privilege pattern -->
+    <!-- FR-039: QuickBooks-specific security groups and record rules -->
+    <!-- FR-040: Multi-company isolation via record rules -->
+    <!-- FR-041: Class dimension mapping -->
+    <!-- FR-042: Location dimension mapping (do_not_migrate flag support) -->
+    <!-- FR-045: QBO schema customization and multi-company support -->
+    <!-- FR-046: Cron for delta window and residual handling -->
+    <!-- FR-049: Service bundle delivery model (LGPL-3, price=0) -->
+    <!-- FR-050: Audit trail and logging (immutable run log) -->
+    <!-- FR-051: Residual migration and leftover handling -->
+    <!-- FR-052: Period unlock and data freeze logic -->
+    <!-- FR-039: Security groups for QuickBooks migration module -->
+
+    <!-- Migration Manager: full CRUD on all migration models (implied_ids per ODOO19-009) -->
+    <record id="group_migration_manager" model="res.groups">
+        <field name="name">QuickBooks Migration / Manager</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- Migration Reviewer: read access on project, staging, validation results, reconciliation (implied_ids per ODOO19-009) -->
+    <record id="group_migration_reviewer" model="res.groups">
+        <field name="name">QuickBooks Migration / Reviewer</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+</odoo>

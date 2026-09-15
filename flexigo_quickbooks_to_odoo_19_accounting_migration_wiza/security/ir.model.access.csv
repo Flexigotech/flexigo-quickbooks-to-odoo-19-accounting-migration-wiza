@@ -1,0 +1,16 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_connection_user,QuickBooks Connection User,model_qb_connection,base.group_user,1,0,0,0
+access_qb_connection_manager,QuickBooks Connection Manager,model_qb_connection,base.group_user,1,1,1,1
+access_qb_object_catalogue_user,QB Object Catalogue User,model_qb_object_catalogue,base.group_user,1,0,0,0
+access_qb_object_catalogue_manager,QB Object Catalogue Manager,model_qb_object_catalogue,base.group_user,1,1,1,1
+access_qb_staging_user,QB Staging User,model_qb_staging,base.group_user,1,0,0,0
+access_qb_staging_manager,QB Staging Manager,model_qb_staging,base.group_user,1,1,1,1
+access_qb_mapping_enhancer_user,QB Mapping Enhancer User,model_qb_mapping_enhancer,base.group_user,1,0,0,0
+access_qb_mapping_enhancer_manager,QB Mapping Enhancer Manager,model_qb_mapping_enhancer,base.group_user,1,1,1,1
+access_qb_mapping_default_value_user,QB Mapping Default Value User,model_qb_mapping_default_value,base.group_user,1,0,0,0
+access_qb_mapping_default_value_manager,QB Mapping Default Value Manager,model_qb_mapping_default_value,base.group_user,1,1,1,1
+access_qb_dimension_default_map_user,QB Dimension Default Map User,model_qb_dimension_default_map,base.group_user,1,0,0,0
+access_qb_dimension_default_map_manager,QB Dimension Default Map Manager,model_qb_dimension_default_map,base.group_user,1,1,1,1
+access_qb_reconciliation_enhancer_user,qb.reconciliation.enhancer.user,model_qb_reconciliation_enhancer,base.group_user,1,1,1,1
+access_qb_scoping_summary_user,qb.scoping.summary.user,model_qb_scoping_summary,base.group_user,1,1,1,1
+access_qb_scoping_wizard_user,qb.scoping.wizard.user,model_qb_scoping_wizard,base.group_user,1,1,1,1
