@@ -84,9 +84,14 @@ Configuration
 
 1. Create an Intuit Developer account at https://developer.intuit.com
 2. Create an application and obtain Client ID + Client Secret
-3. Set up a redirect URI to your Odoo instance
-4. In the module, create a connection profile with OAuth credentials
-5. Authorize via the "Test Connection" button
+3. In the module, create a connection profile of type OAuth with the Client ID and the Client Secret (only
+   administrators see and set the secret)
+4. Add the "Redirect URI" shown in the connection (``<your Odoo URL>/qb/oauth/callback``) to the Redirect URIs of
+   your Intuit application
+5. Click "Connect to QuickBooks Online", sign in to Intuit and choose the company; then "Test Connection"
+
+Only members of the Migration Manager group can create or change connections: an administrator needs that group
+too.
 
 **QBDT Setup (for Desktop users):**
 

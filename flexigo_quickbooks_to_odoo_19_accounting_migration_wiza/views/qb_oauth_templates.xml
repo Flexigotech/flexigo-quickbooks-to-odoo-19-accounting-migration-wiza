@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="qb_oauth_error" name="QuickBooks connection error">
+        &lt;!DOCTYPE html&gt;
+        <html>
+            <head><meta charset="utf-8"/><title>QuickBooks connection failed</title></head>
+            <body style="font-family: sans-serif; margin: 3em; max-width: 40em;">
+                <h1>QuickBooks connection failed</h1>
+                <p t-out="error_description"/>
+                <p>Error code: <code t-out="error"/></p>
+                <p><a href="/web">Back to Odoo</a></p>
+            </body>
+        </html>
+    </template>
+</odoo>
