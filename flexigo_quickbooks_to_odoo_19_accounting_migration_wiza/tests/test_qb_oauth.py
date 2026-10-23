@@ -8,6 +8,7 @@ discovery document: authorization at appcenter.intuit.com; the API at sandbox-qu
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
+from odoo.exceptions import UserError
 from odoo.tests import HttpCase, new_test_user, tagged
 from odoo.tools import mute_logger
 
@@ -20,7 +21,7 @@ class TestQbOauth(HttpCase):
 
     def setUp(self):
         super().setUp()
-        new_test_user(self.env, login='qb-oauth-admin',
+        self.admin = new_test_user(self.env, login='qb-oauth-admin',
                       groups='base.group_system,flexigo_migration_base.group_migration_manager')
         self.connection = self.env['qb.connection'].create({
             'name': 'QB OAuth', 'connection_type': 'oauth', 'oauth_client_id': 'client-id',
@@ -77,13 +78,35 @@ class TestQbOauth(HttpCase):
         self.assertFalse(self.connection.realm_id)
 
     def test_04_the_form_connects(self):
-        arch = self.env['qb.connection'].get_view(view_type='form')['arch']
+        menu = self.env.ref('flexigo_quickbooks_to_odoo_19_accounting_migration_wiza.menu_qb_connections')
+        self.assertEqual((menu.parent_id, menu.action), (self.env.ref('flexigo_migration_base.menu_migration_root'),
+                         self.env.ref('flexigo_quickbooks_to_odoo_19_accounting_migration_wiza.action_qb_connection')))
+        arch = self.env['qb.connection'].with_user(self.admin).get_view(view_type='form')['arch']
         for name in ('oauth_client_id', 'oauth_client_secret_encrypted', 'oauth_redirect_uri', 'realm_id',
                      'action_connect_qbo', 'action_test_connection'):
             with self.subTest(name=name):
                 self.assertIn('name="%s"' % name, arch)
-        self.assertEqual(self.connection.action_connect_qbo()['url'],
+        self.assertEqual(self.connection.with_user(self.admin).action_connect_qbo()['url'],
                          '/qb/oauth/authorize?connection_id=%d' % self.connection.id)
+        with self.assertRaises(UserError):
+            self.env['qb.connection'].create({'name': 'No client', 'connection_type': 'oauth'}).action_connect_qbo()
+
+    def test_06_who_cannot_change_the_connection_cannot_connect_it(self):
+        new_test_user(self.env, login='qb-oauth-internal', groups='base.group_user')
+        self.authenticate('qb-oauth-internal', 'qb-oauth-internal')
+        response = self.url_open('/qb/oauth/authorize?connection_id=%d' % self.connection.id, allow_redirects=False)
+        self.assertEqual(response.status_code, 403)
+
+    def test_07_a_state_serves_once(self):
+        query = self._start()[1]
+        token = MagicMock(status_code=200)
+        token.json.return_value = {'access_token': 'a', 'refresh_token': 'r'}
+        url = '/qb/oauth/callback?code=c&realmId=9130&state=%s' % query['state']
+        with patch('requests.post', return_value=token) as post, mute_logger(
+                'odoo.addons.flexigo_quickbooks_to_odoo_19_accounting_migration_wiza.controllers.qb_oauth_controller'):
+            self.assertEqual(self.url_open(url, allow_redirects=False).status_code, 303)
+            self.assertEqual(self.url_open(url, allow_redirects=False).status_code, 400)
+        self.assertEqual(post.call_count, 1)
 
     def test_05_sandbox_talks_to_the_quickbooks_online_sandbox(self):
         sandbox = 'https://sandbox-quickbooks.api.intuit.com'
