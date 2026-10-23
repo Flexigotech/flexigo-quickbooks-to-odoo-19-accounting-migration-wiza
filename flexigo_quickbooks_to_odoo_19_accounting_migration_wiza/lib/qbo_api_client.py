@@ -33,7 +33,7 @@ class QboApiClient:
         self.concurrency_cap = concurrency_cap
         self.max_retries = max_retries
 
-        self.base_url = 'https://sandbox.api.intuit.com' if sandbox else 'https://quickbooks.api.intuit.com'
+        self.base_url = 'https://sandbox-quickbooks.api.intuit.com' if sandbox else 'https://quickbooks.api.intuit.com'
         self.session = requests.Session()
         self.session.headers.update({
             'Authorization': f'Bearer {access_token}',

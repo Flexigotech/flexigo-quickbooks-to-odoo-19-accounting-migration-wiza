@@ -21,11 +21,25 @@
         <field name="model">qb.connection</field>
         <field name="arch" type="xml">
             <form string="QuickBooks Connection">
+                <header>
+                    <button name="action_connect_qbo" type="object" string="Connect to QuickBooks Online"
+                            class="btn-primary" invisible="connection_type != 'oauth'"/>
+                    <button name="action_test_connection" type="object" string="Test Connection"/>
+                </header>
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="connection_type"/>
-                        <field name="is_sandbox"/>
+                        <group>
+                            <field name="name"/>
+                            <field name="connection_type"/>
+                            <field name="is_sandbox"/>
+                        </group>
+                        <group invisible="connection_type != 'oauth'">
+                            <field name="oauth_client_id"/>
+                            <field name="oauth_client_secret_encrypted" string="Client Secret" password="True"/>
+                            <field name="oauth_redirect_uri" widget="CopyClipboardChar"/>
+                            <field name="realm_id" readonly="1"/>
+                            <field name="minorversion"/>
+                        </group>
                     </group>
                 </sheet>
             </form>

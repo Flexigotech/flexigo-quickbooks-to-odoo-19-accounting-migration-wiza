@@ -137,6 +137,9 @@ class QbConnection(models.Model):
         help='JSON with counts per entity type detected in upload'
     )
 
+    # Where Intuit sends the user back: register this exact URL in the Intuit app (Redirect URIs)
+    oauth_redirect_uri = fields.Char(string='Redirect URI', compute='_compute_oauth_redirect_uri')
+
     _SECRET_FIELDS = ('oauth_client_secret_encrypted', 'oauth_access_token_encrypted', 'oauth_refresh_token_encrypted')
 
     def _encrypt_secret_vals(self, vals):
@@ -173,6 +176,19 @@ class QbConnection(models.Model):
     def _get_oauth_refresh_token(self):
         return decrypt_value(self.env, self.sudo().oauth_refresh_token_encrypted)
 
+    def _get_oauth_redirect_uri(self):
+        return self.get_base_url() + '/qb/oauth/callback'
+
+    def _compute_oauth_redirect_uri(self):
+        for connection in self:
+            connection.oauth_redirect_uri = connection._get_oauth_redirect_uri()
+
+    def action_connect_qbo(self):
+        """FR-002: start the authorization with Intuit (the controller keeps the state in the session)."""
+        self.ensure_one()
+        self._check_can_manage()
+        return {'type': 'ir.actions.act_url', 'url': '/qb/oauth/authorize?connection_id=%d' % self.id, 'target': 'self'}
+
     # FR-005: Test connection action
     def action_test_connection(self):
         self.ensure_one()
@@ -188,7 +204,7 @@ class QbConnection(models.Model):
         """FR-005: Validate QBO OAuth credentials against CompanyInfo"""
         try:
             # Build base URL
-            base_url = 'https://sandbox.api.intuit.com' if self.is_sandbox else 'https://quickbooks.api.intuit.com'
+            base_url = 'https://sandbox-quickbooks.api.intuit.com' if self.is_sandbox else 'https://quickbooks.api.intuit.com'
             url = f"{base_url}/v3/company/{self.realm_id}/companyinfo/{self.realm_id}"
             
             headers = {

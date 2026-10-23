@@ -22,7 +22,7 @@ class QboReportsClient:
         self.minor_version = minor_version
         self.sandbox = sandbox
 
-        self.base_url = 'https://sandbox.api.intuit.com' if sandbox else 'https://quickbooks.api.intuit.com'
+        self.base_url = 'https://sandbox-quickbooks.api.intuit.com' if sandbox else 'https://quickbooks.api.intuit.com'
         self.session = requests.Session()
         self.session.headers.update({
             'Authorization': f'Bearer {access_token}',
