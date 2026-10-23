@@ -94,7 +94,8 @@ class TestQbOauth(HttpCase):
     def test_06_who_cannot_change_the_connection_cannot_connect_it(self):
         new_test_user(self.env, login='qb-oauth-internal', groups='base.group_user')
         self.authenticate('qb-oauth-internal', 'qb-oauth-internal')
-        response = self.url_open('/qb/oauth/authorize?connection_id=%d' % self.connection.id, allow_redirects=False)
+        with mute_logger('odoo.http'):  # Odoo logs the refused access as a warning
+            response = self.url_open('/qb/oauth/authorize?connection_id=%d' % self.connection.id, allow_redirects=False)
         self.assertEqual(response.status_code, 403)
 
     def test_07_a_state_serves_once(self):
