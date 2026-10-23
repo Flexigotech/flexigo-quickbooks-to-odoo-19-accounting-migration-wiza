@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 from odoo.tests import HttpCase, new_test_user, tagged
+from odoo.tools import mute_logger
 
 from ..lib.qbo_api_client import QboApiClient
 from ..lib.qbo_reports_client import QboReportsClient
@@ -62,7 +63,9 @@ class TestQbOauth(HttpCase):
 
     def test_03_a_callback_odoo_did_not_start_stores_nothing(self):
         self._start()
-        with patch('requests.post') as post:
+        # each refused return logs a warning on purpose
+        with patch('requests.post') as post, mute_logger('odoo.addons.flexigo_quickbooks_to_odoo_19_accounting_migration_wiza'
+                                                         '.controllers.qb_oauth_controller'):
             for url in ('/qb/oauth/callback?code=c&realmId=1&state=forged', '/qb/oauth/callback?code=c&realmId=1',
                         '/qb/oauth/callback?error=access_denied&state=x'):
                 with self.subTest(url=url):
