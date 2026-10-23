@@ -53,4 +53,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <menuitem id="menu_qb_connections" name="QuickBooks Connections" parent="flexigo_migration_base.menu_migration_root"
+              action="action_qb_connection" sequence="50" groups="flexigo_migration_base.group_migration_manager"/>
+
 </odoo>
