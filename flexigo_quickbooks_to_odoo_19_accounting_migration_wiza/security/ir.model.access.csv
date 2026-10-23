@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_qb_connection_user,QuickBooks Connection User,model_qb_connection,base.group_user,1,0,0,0
-access_qb_connection_manager,QuickBooks Connection Manager,model_qb_connection,base.group_user,1,1,1,1
+access_qb_connection_manager,QuickBooks Connection Manager,model_qb_connection,account.group_account_manager,1,1,1,1
 access_qb_object_catalogue_user,QB Object Catalogue User,model_qb_object_catalogue,base.group_user,1,0,0,0
 access_qb_object_catalogue_manager,QB Object Catalogue Manager,model_qb_object_catalogue,base.group_user,1,1,1,1
 access_qb_staging_user,QB Staging User,model_qb_staging,base.group_user,1,0,0,0
