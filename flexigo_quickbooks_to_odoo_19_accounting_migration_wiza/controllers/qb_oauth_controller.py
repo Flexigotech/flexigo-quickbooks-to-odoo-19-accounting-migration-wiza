@@ -59,6 +59,7 @@ class QuickBooksOAuthController(http.Controller):
                 })
 
             connection = http.request.env['qb.connection'].browse(connection_id)
+            connection._check_can_manage()  # the client secret goes to Intuit below
 
             # Exchange code for tokens
             token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'

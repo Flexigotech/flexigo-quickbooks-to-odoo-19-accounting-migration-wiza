@@ -5,7 +5,7 @@ failed and the value was stored as it came; the OAuth callback wrote the tokens 
 could read, change and delete the connection."""
 from unittest.mock import MagicMock, patch
 
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 SECRETS = {
@@ -76,3 +76,32 @@ class TestQbSecrets(TransactionCase):
         self.assertEqual(self.connection._get_oauth_refresh_token(), 'legacy-refresh')
         # what was already encrypted is left as it was
         self.assertEqual(after['oauth_client_secret_encrypted'], before['oauth_client_secret_encrypted'])
+
+    def test_05_internal_user_cannot_use_them(self):
+        internal = new_test_user(self.env, login='qb-secrets-user', groups='base.group_user')
+        connection = self.connection.with_user(internal)
+        with patch('requests.post') as post, patch('requests.get') as get:
+            for action in (connection.refresh_access_token, connection.action_test_connection):
+                with self.subTest(action=action.__name__), self.assertRaises(AccessError):
+                    action()
+        post.assert_not_called()
+        get.assert_not_called()
+
+    def test_06_a_token_of_another_key_raises_and_is_not_encrypted_again(self):
+        from cryptography.fernet import Fernet
+        foreign = Fernet(Fernet.generate_key()).encrypt(b'client-secret').decode()
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE qb_connection SET oauth_client_secret_encrypted = %s WHERE id = %s",
+                            [foreign, self.connection.id])
+        self.env.invalidate_all()
+        with self.assertRaises(UserError):
+            self.connection._get_oauth_client_secret()
+        self.connection._encrypt_stored_secrets()
+        self.assertEqual(self._stored()['oauth_client_secret_encrypted'], foreign)
+
+    def test_07_setting_the_variable_later_loses_nothing(self):
+        from cryptography.fernet import Fernet
+        with patch.dict('os.environ', {'MIGRATION_ENCRYPTION_KEY': Fernet.generate_key().decode()}):
+            self.assertEqual(self.connection._get_oauth_client_secret(), 'client-secret')
+            self.connection.write({'oauth_access_token_encrypted': 'with-the-variable'})
+            self.assertEqual(self.connection._get_oauth_access_token(), 'with-the-variable')
