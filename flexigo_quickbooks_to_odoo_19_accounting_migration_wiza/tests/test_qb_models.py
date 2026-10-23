@@ -92,4 +92,5 @@ class TestQBModels(TransactionCase):
         """FR-044: Verify multi-currency as-recorded support"""
         # FR-044: Foreign-currency open invoices carry amount in original currency
         staging_model = self.env['qb.staging']
-        self.assertTrue(hasattr(staging_model, 'original_currency_code') or hasattr(staging_model, 'currency_id'))
+        # the staging row keeps the QuickBooks currency as recorded (CurrencyRef)
+        self.assertIn('currency_ref', staging_model._fields)
