@@ -1,5 +1,14 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 18.0.1.0.2 (2026-10-23)
+- QuickBooks Online can be connected from Odoo. The connection form has the Client ID and Secret, the Redirect URI
+  to register in Intuit and a "Connect to QuickBooks Online" button. Before, the form had no such fields, the
+  authorization and its return failed with an error, the return looked for the company under the wrong name and
+  the code exchange did not send the redirect URI.
+- The authorization uses a random state checked on return, and errors show a page that says what went wrong.
+- Sandbox connections go to the QuickBooks Online sandbox (they went to hosts that are not QuickBooks Online).
+- Only members of the Migration Manager group manage connections; an administrator needs that group too.
+
 ## 18.0.1.0.1 (2026-10-23)
 - Security: the QuickBooks OAuth client secret and tokens are really encrypted now. Without the
   MIGRATION_ENCRYPTION_KEY environment variable the key used to be a fixed text that is not a valid Fernet key, so
