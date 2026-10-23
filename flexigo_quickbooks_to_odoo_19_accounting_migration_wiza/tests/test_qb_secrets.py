@@ -62,3 +62,17 @@ class TestQbSecrets(TransactionCase):
         self.assertNotIn('new-refresh', stored['oauth_refresh_token_encrypted'])
         self.assertEqual(self.connection._get_oauth_access_token(), 'new-access')
         self.assertEqual(self.connection._get_oauth_refresh_token(), 'new-refresh')
+
+    def test_04_upgrade_encrypts_what_older_versions_stored_in_plain_text(self):
+        self.env.flush_all()
+        self.env.cr.execute("UPDATE qb_connection SET oauth_refresh_token_encrypted = 'legacy-refresh' WHERE id = %s",
+                            [self.connection.id])
+        self.env.invalidate_all()
+        self.assertEqual(self.connection._get_oauth_refresh_token(), 'legacy-refresh')
+        before = self._stored()
+        self.connection._encrypt_stored_secrets()
+        after = self._stored()
+        self.assertNotIn('legacy-refresh', after['oauth_refresh_token_encrypted'])
+        self.assertEqual(self.connection._get_oauth_refresh_token(), 'legacy-refresh')
+        # what was already encrypted is left as it was
+        self.assertEqual(after['oauth_client_secret_encrypted'], before['oauth_client_secret_encrypted'])
