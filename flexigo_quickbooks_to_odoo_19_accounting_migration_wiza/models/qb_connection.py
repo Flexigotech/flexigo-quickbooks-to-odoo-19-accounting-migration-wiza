@@ -12,17 +12,29 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 def _fernet(env):
-    """FR-004: the Fernet key is MIGRATION_ENCRYPTION_KEY when it is a valid key, otherwise one derived from the database
-    secret (only administrators read it). Before 1.0.1 a missing key made the encryption fail and store the value as-is."""
-    from cryptography.fernet import Fernet
+    """FR-004: the Fernet keys are MIGRATION_ENCRYPTION_KEY when it is a valid key, and one derived from the database
+    secret (only administrators read it). New values use the first; any of them decrypts, so setting or removing the
+    variable loses nothing. Before 1.0.1 a missing key made the encryption fail and store the value as it came."""
+    from cryptography.fernet import Fernet, MultiFernet
+    keys = []
     key = os.environ.get('MIGRATION_ENCRYPTION_KEY')
     if key:
         try:
-            return Fernet(key)
+            keys.append(Fernet(key))
         except ValueError:
             _logger.warning("MIGRATION_ENCRYPTION_KEY is not a valid Fernet key: using the key derived from the database")
     secret = env['ir.config_parameter'].sudo().get_param('database.secret')
-    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest()))
+    keys.append(Fernet(base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())))
+    return MultiFernet(keys)
+
+
+def _is_token(value):
+    """A Fernet token, whatever key made it: version byte 0x80, then timestamp, IV, 16-byte blocks and HMAC."""
+    try:
+        raw = base64.urlsafe_b64decode(value.encode())
+    except ValueError:
+        return False
+    return raw[:1] == b'\x80' and len(raw) >= 73 and (len(raw) - 57) % 16 == 0
 
 
 def encrypt_value(env, value):
@@ -31,14 +43,18 @@ def encrypt_value(env, value):
 
 
 def decrypt_value(env, value):
-    """FR-004: Decrypt sensitive values. A value that is not a token of the key is returned as it is: what versions
-    before 1.0.1 stored in plain text, until the upgrade encrypts it."""
+    """FR-004: Decrypt sensitive values. What versions before 1.0.1 stored in plain text is returned as it is until the
+    upgrade encrypts it; a token that no key opens (a duplicated database, a changed MIGRATION_ENCRYPTION_KEY) raises
+    instead of going to QuickBooks as the credential."""
     from cryptography.fernet import InvalidToken
     if not value:
         return value
     try:
         return _fernet(env).decrypt(value.encode()).decode()
     except InvalidToken:
+        if _is_token(value):
+            raise UserError(_("The QuickBooks credentials were encrypted with another key (the database was duplicated "
+                              "or MIGRATION_ENCRYPTION_KEY changed): enter them again.")) from None
         return value
 
 
@@ -138,9 +154,13 @@ class QbConnection(models.Model):
         """1.0.1 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
         for connection in self.sudo():
             plain = {name: connection[name] for name in self._SECRET_FIELDS
-                     if connection[name] and decrypt_value(self.env, connection[name]) == connection[name]}
+                     if connection[name] and not _is_token(connection[name])}
             if plain:
                 connection.write(plain)
+
+    def _check_can_manage(self):
+        """The secrets go to QuickBooks with every call: only who may change the connection uses them."""
+        self.check_access('write')
 
     # FR-004: Credentials never logged; admin-only fields, read through sudo for whoever runs the migration
     def _get_oauth_client_secret(self):
@@ -155,6 +175,7 @@ class QbConnection(models.Model):
     # FR-005: Test connection action
     def action_test_connection(self):
         self.ensure_one()
+        self._check_can_manage()
         if self.connection_type == 'oauth':
             return self._test_qbo_connection()
         elif self.connection_type == 'upload':
@@ -246,6 +267,7 @@ class QbConnection(models.Model):
     # FR-002: Refresh token handling with rotation
     def refresh_access_token(self):
         """FR-002: Refresh OAuth access token, handling refresh token rotation"""
+        self._check_can_manage()
         if not self.sudo().oauth_refresh_token_encrypted:
             raise UserError(_("No refresh token available"))
         
