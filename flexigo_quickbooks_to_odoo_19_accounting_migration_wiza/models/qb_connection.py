@@ -53,8 +53,8 @@ def decrypt_value(env, value):
         return _fernet(env).decrypt(value.encode()).decode()
     except InvalidToken:
         if _is_token(value):
-            raise UserError(_("The QuickBooks credentials were encrypted with another key (the database was duplicated "
-                              "or MIGRATION_ENCRYPTION_KEY changed): enter them again.")) from None
+            raise UserError(env._("The QuickBooks credentials were encrypted with another key (the database was "
+                                  "duplicated or MIGRATION_ENCRYPTION_KEY changed): enter them again.")) from None
         return value
 
 
