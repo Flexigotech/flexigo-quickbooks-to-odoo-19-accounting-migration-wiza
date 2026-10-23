@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+import base64
+import hashlib
 import json
 import logging
+import os
 import requests
 from datetime import datetime, timedelta
 from odoo import models, fields, api, _
@@ -8,46 +11,34 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-# Fernet encryption key from environment (FR-004)
-ENCRYPTION_KEY = None  # Will be loaded from env var
+def _fernet(env):
+    """FR-004: the Fernet key is MIGRATION_ENCRYPTION_KEY when it is a valid key, otherwise one derived from the database
+    secret (only administrators read it). Before 1.0.1 a missing key made the encryption fail and store the value as-is."""
+    from cryptography.fernet import Fernet
+    key = os.environ.get('MIGRATION_ENCRYPTION_KEY')
+    if key:
+        try:
+            return Fernet(key)
+        except ValueError:
+            _logger.warning("MIGRATION_ENCRYPTION_KEY is not a valid Fernet key: using the key derived from the database")
+    secret = env['ir.config_parameter'].sudo().get_param('database.secret')
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest()))
 
 
-def get_encryption_key():
-    global ENCRYPTION_KEY
-    if ENCRYPTION_KEY is None:
-        import os
-        ENCRYPTION_KEY = os.environ.get('MIGRATION_ENCRYPTION_KEY', 'default-key-change-in-production')
-    return ENCRYPTION_KEY
+def encrypt_value(env, value):
+    """FR-004: Encrypt sensitive values using Fernet (never stored as they come)"""
+    return _fernet(env).encrypt(value.encode()).decode() if value else value
 
 
-def encrypt_value(value):
-    """FR-004: Encrypt sensitive values using Fernet"""
+def decrypt_value(env, value):
+    """FR-004: Decrypt sensitive values. A value that is not a token of the key is returned as it is: what versions
+    before 1.0.1 stored in plain text, until the upgrade encrypts it."""
+    from cryptography.fernet import InvalidToken
     if not value:
         return value
     try:
-        from cryptography.fernet import Fernet
-        key = get_encryption_key()
-        # Ensure key is 32 url-safe base64-encoded bytes
-        if len(key) != 44:  # Fernet key length
-            # Pad/truncate for demo - real impl should use proper key
-            key = key.ljust(43, '=') + '='
-        f = Fernet(key.encode() if isinstance(key, str) else key)
-        return f.encrypt(value.encode()).decode()
-    except Exception as e:
-        _logger.warning("Encryption failed, storing value as-is")
-        return value
-
-
-def decrypt_value(value):
-    """FR-004: Decrypt sensitive values"""
-    if not value:
-        return value
-    try:
-        from cryptography.fernet import Fernet
-        key = get_encryption_key()
-        f = Fernet(key.encode() if isinstance(key, str) else key)
-        return f.decrypt(value.encode()).decode()
-    except Exception:
+        return _fernet(env).decrypt(value.encode()).decode()
+    except InvalidToken:
         return value
 
 
@@ -76,14 +67,15 @@ class QbConnection(models.Model):
         string='OAuth Client ID',
         help='Intuit OAuth client ID'
     )
+    # Written in plain text, stored encrypted (create/write); only the administrator reads them.
     oauth_client_secret_encrypted = fields.Char(
-        string='OAuth Client Secret (Encrypted)'
+        string='OAuth Client Secret (Encrypted)', groups='base.group_system', copy=False
     )
     oauth_access_token_encrypted = fields.Char(
-        string='OAuth Access Token (Encrypted)'
+        string='OAuth Access Token (Encrypted)', groups='base.group_system', copy=False
     )
     oauth_refresh_token_encrypted = fields.Char(
-        string='OAuth Refresh Token (Encrypted)'
+        string='OAuth Refresh Token (Encrypted)', groups='base.group_system', copy=False
     )
     oauth_refresh_token_expiry = fields.Datetime(
         string='Refresh Token Expiry'
@@ -129,15 +121,36 @@ class QbConnection(models.Model):
         help='JSON with counts per entity type detected in upload'
     )
 
-    # FR-004: Credentials never logged
+    _SECRET_FIELDS = ('oauth_client_secret_encrypted', 'oauth_access_token_encrypted', 'oauth_refresh_token_encrypted')
+
+    def _encrypt_secret_vals(self, vals):
+        return {name: encrypt_value(self.env, value) if name in self._SECRET_FIELDS else value
+                for name, value in vals.items()}
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._encrypt_secret_vals(vals) for vals in vals_list])
+
+    def write(self, vals):
+        return super().write(self._encrypt_secret_vals(vals))
+
+    def _encrypt_stored_secrets(self):
+        """1.0.1 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
+        for connection in self.sudo():
+            plain = {name: connection[name] for name in self._SECRET_FIELDS
+                     if connection[name] and decrypt_value(self.env, connection[name]) == connection[name]}
+            if plain:
+                connection.write(plain)
+
+    # FR-004: Credentials never logged; admin-only fields, read through sudo for whoever runs the migration
     def _get_oauth_client_secret(self):
-        return decrypt_value(self.oauth_client_secret_encrypted)
+        return decrypt_value(self.env, self.sudo().oauth_client_secret_encrypted)
 
     def _get_oauth_access_token(self):
-        return decrypt_value(self.oauth_access_token_encrypted)
+        return decrypt_value(self.env, self.sudo().oauth_access_token_encrypted)
 
     def _get_oauth_refresh_token(self):
-        return decrypt_value(self.oauth_refresh_token_encrypted)
+        return decrypt_value(self.env, self.sudo().oauth_refresh_token_encrypted)
 
     # FR-005: Test connection action
     def action_test_connection(self):
@@ -233,7 +246,7 @@ class QbConnection(models.Model):
     # FR-002: Refresh token handling with rotation
     def refresh_access_token(self):
         """FR-002: Refresh OAuth access token, handling refresh token rotation"""
-        if not self.oauth_refresh_token_encrypted:
+        if not self.sudo().oauth_refresh_token_encrypted:
             raise UserError(_("No refresh token available"))
         
         token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
@@ -251,8 +264,9 @@ class QbConnection(models.Model):
             
             if response.status_code == 200:
                 data = response.json()
-                self.oauth_access_token_encrypted = encrypt_value(data['access_token'])
-                self.oauth_refresh_token_encrypted = encrypt_value(data['refresh_token'])
+                # write() encrypts them
+                self.sudo().write({'oauth_access_token_encrypted': data['access_token'],
+                                   'oauth_refresh_token_encrypted': data['refresh_token']})
                 # Intuit returns expires_in in seconds
                 expiry = datetime.now() + timedelta(seconds=data.get('expires_in', 3600))
                 self.oauth_refresh_token_expiry = expiry

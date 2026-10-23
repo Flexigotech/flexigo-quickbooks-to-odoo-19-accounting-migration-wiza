@@ -21,7 +21,7 @@ Key Features
 ============
 
 - **Dual-path connectivity:** QBO OAuth 2.0 API or QBDT export file upload
-- **Secure credential storage:** Fernet encryption with environment-based key management
+- **Secure credential storage:** Fernet encryption; only the administrator reads the credentials
 - **Rate-limited extraction:** Configurable concurrency with exponential backoff retry
 - **Idempotent loading:** Re-runnable without creating duplicates via source ID tracking
 - **Staged validation:** Dry-run mode with detailed error reporting before commit
@@ -71,7 +71,8 @@ Configuration
 
 **Environment Variables:**
 
-- ``MIGRATION_ENCRYPTION_KEY`` — Fernet encryption key for credential storage (required for production)
+- ``MIGRATION_ENCRYPTION_KEY`` — optional Fernet key for credential storage; without it, or if it is not a valid
+  Fernet key, the key is derived from the database secret
 
 **Settings (via Odoo config):**
 
@@ -130,7 +131,8 @@ Security
 **Credential Protection:**
 
 - OAuth tokens, refresh tokens, and API secrets are encrypted via Fernet (AES-128)
-- Encryption key is read from environment variable (not stored in database)
+- Encryption key: ``MIGRATION_ENCRYPTION_KEY`` when it is a valid Fernet key, otherwise derived from the database
+  secret (only administrators read it)
 - Credentials are never logged, tracked in chatter, or exposed in UI
 
 **Access Control:**

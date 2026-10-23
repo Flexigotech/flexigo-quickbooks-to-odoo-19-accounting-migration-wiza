@@ -83,10 +83,13 @@ class QuickBooksOAuthController(http.Controller):
                 # This controller just handles the OAuth callback and passes tokens to the model
 
                 connection.write({
-                    'oauth_access_token_encrypted': token_data['access_token'],  # Will be encrypted by model
-                    'oauth_refresh_token_encrypted': token_data['refresh_token'],  # Will be encrypted by model
                     'realm_id': realm_id,
                     'is_validated': False,  # Will be set to True after test_connection
+                })
+                # Admin-only fields, encrypted by the model's write()
+                connection.sudo().write({
+                    'oauth_access_token_encrypted': token_data['access_token'],
+                    'oauth_refresh_token_encrypted': token_data['refresh_token'],
                 })
 
                 _logger.info(f"OAuth tokens successfully obtained for realm {realm_id}")
