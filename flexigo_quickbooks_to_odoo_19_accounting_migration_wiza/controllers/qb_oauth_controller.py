@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import re
 import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
@@ -29,7 +30,7 @@ class QuickBooksOAuthController(http.Controller):
     @http.route('/qb/oauth/authorize', type='http', auth='user')
     def initiate_oauth(self, connection_id=None, **kw):
         """Send the user to Intuit with a fresh state, kept in the session for the callback."""
-        if not str(connection_id or '').isdigit():
+        if not re.fullmatch(r'[0-9]+', str(connection_id or '')):
             return request.not_found()
         connection = request.env['qb.connection'].browse(int(connection_id)).exists()
         if not connection:
@@ -50,13 +51,14 @@ class QuickBooksOAuthController(http.Controller):
     def oauth_callback(self, code=None, state=None, error=None, **kw):
         """Intuit comes back with code, state and realmId: exchange the code and store the tokens (encrypted by write())."""
         pending = request.session.pop('qb_oauth', None) or {}
-        if error:
-            return self._error(error, kw.get('error_description') or 'QuickBooks did not authorize the connection.')
-        if not state or not consteq(str(pending.get('state', '')), state):
+        # the state first: an error link that Odoo did not start says nothing about this connection
+        if not state or not consteq(str(pending.get('state', '')).encode(), str(state).encode()):
             return self._error('invalid_state', 'This QuickBooks authorization was not started from this Odoo session. '
                                                 'Start it again from the connection.')
+        if error:
+            return self._error(error, kw.get('error_description') or 'QuickBooks did not authorize the connection.')
         realm_id = kw.get('realmId')
-        if not code or not realm_id:
+        if not code or not re.fullmatch(r'[0-9]+', realm_id or ''):
             return self._error('invalid_request', 'QuickBooks did not send the authorization code or the company (realmId).')
         connection = request.env['qb.connection'].browse(pending.get('connection_id')).exists()
         if not connection:
@@ -77,16 +79,19 @@ class QuickBooksOAuthController(http.Controller):
         if response.status_code != 200:
             try:
                 description = response.json().get('error_description') or response.json().get('error')
-            except ValueError:
+            except (ValueError, AttributeError):
                 description = None
             return self._error('token_exchange_failed', description or 'QuickBooks refused the authorization code (HTTP %s).'
                                % response.status_code)
-        token_data = response.json()
+        try:
+            token_data = response.json()
+            values = {
+                'oauth_access_token_encrypted': token_data['access_token'],
+                'oauth_refresh_token_encrypted': token_data['refresh_token'],
+            }
+        except (ValueError, KeyError, TypeError):
+            return self._error('token_exchange_failed', 'QuickBooks answered without the tokens. Try again.')
         connection.write({'realm_id': realm_id, 'is_validated': False})
-        values = {
-            'oauth_access_token_encrypted': token_data['access_token'],
-            'oauth_refresh_token_encrypted': token_data['refresh_token'],
-        }
         if token_data.get('x_refresh_token_expires_in'):
             values['oauth_refresh_token_expiry'] = fields.Datetime.now() + timedelta(
                 seconds=int(token_data['x_refresh_token_expires_in']))
