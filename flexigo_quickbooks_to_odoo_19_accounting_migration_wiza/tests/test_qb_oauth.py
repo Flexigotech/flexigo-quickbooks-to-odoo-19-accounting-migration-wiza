@@ -6,7 +6,9 @@ was rolled back), the callback read realm_id where Intuit sends realmId, the sta
 did not send the redirect_uri, and the sandbox pointed to hosts that are not QuickBooks Online (Intuit's sandbox
 discovery document: authorization at appcenter.intuit.com; the API at sandbox-quickbooks.api.intuit.com)."""
 from unittest.mock import MagicMock, patch
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
+
+from lxml import etree
 
 from odoo.exceptions import UserError
 from odoo.tests import HttpCase, new_test_user, tagged
@@ -119,3 +121,125 @@ class TestQbOauth(HttpCase):
         with patch('requests.get', return_value=info) as get:
             self.connection.action_test_connection()
         self.assertTrue(get.call_args.args[0].startswith(sandbox + '/v3/company/9130/'))
+
+
+MGR = 'flexigo_migration_base.group_migration_manager'
+CTL = 'odoo.addons.flexigo_quickbooks_to_odoo_19_accounting_migration_wiza.controllers.qb_oauth_controller'
+
+
+def _token(**extra):
+    resp = MagicMock(status_code=200)
+    data = {'access_token': 'new-access', 'refresh_token': 'new-refresh', 'expires_in': 3600,
+            'x_refresh_token_expires_in': 8726400}
+    data.update(extra)
+    resp.json.return_value = data
+    return resp
+
+
+@tagged('post_install', '-at_install')
+class TestQbOauthGuards(HttpCase):
+    """x.0.1.0.3: a connection stays in its company, and every check of the callback is pinned by a test (a review took
+    them out one by one and the suite stayed green)."""
+
+    def setUp(self):
+        super().setUp()
+        new_test_user(self.env, login='qb-guard-admin', groups='base.group_system,%s' % MGR)
+        self.manager = new_test_user(self.env, login='qb-guard-manager', groups=MGR)
+        self.connection = self.env['qb.connection'].create({
+            'name': 'QB Guard', 'connection_type': 'oauth', 'oauth_client_id': 'client-id',
+            'oauth_client_secret_encrypted': 'client-secret'})
+        self.company_b = self.env['res.company'].create({'name': 'QB Guard Company B'})
+        self.manager_b = new_test_user(self.env, login='qb-guard-manager-b', groups=MGR, company_id=self.company_b.id,
+                                       company_ids=[(6, 0, [self.company_b.id])])
+
+    def _start(self):
+        response = self.url_open('/qb/oauth/authorize?connection_id=%d' % self.connection.id, allow_redirects=False)
+        self.assertEqual(response.status_code, 303, response.text[:200])
+        return parse_qs(urlparse(response.headers['Location']).query)['state'][0]
+
+    def _callback(self, **params):
+        return self.url_open('/qb/oauth/callback?' + urlencode(params), allow_redirects=False)
+
+    def test_08_a_manager_of_another_company_does_not_reach_the_connection(self):
+        self.assertNotEqual(self.connection.company_id, self.company_b)
+        self.assertFalse(self.env['qb.connection'].with_user(self.manager_b).search([('id', '=', self.connection.id)]))
+        self.authenticate('qb-guard-manager-b', 'qb-guard-manager-b')
+        with mute_logger('odoo.http', CTL):
+            start = self.url_open('/qb/oauth/authorize?connection_id=%d' % self.connection.id, allow_redirects=False)
+        self.assertEqual(start.status_code, 404)
+        # who started in A and is moved to B before Intuit comes back exchanges nothing and writes nothing
+        self.authenticate('qb-guard-manager', 'qb-guard-manager')
+        state = self._start()
+        self.manager.write({'company_ids': [(6, 0, [self.company_b.id])], 'company_id': self.company_b.id})
+        with patch('requests.post', return_value=_token()) as post, mute_logger(CTL, 'odoo.http'):
+            response = self._callback(code='c', state=state, realmId='777')
+        self.assertIn(response.status_code, (400, 403, 404))
+        post.assert_not_called()
+        self.connection.invalidate_recordset()
+        self.assertFalse(self.connection.realm_id)
+
+    def test_09_staging_rows_stay_in_their_company(self):
+        project = self.env['migration.project'].create({
+            'name': 'QB Guard', 'source_type': 'qbo', 'company_id': self.connection.company_id.id,
+            'owner_id': self.env.user.id, 'status': 'draft'})
+        row = self.env['qb.staging'].create({'object_type': 'class', 'source_id': 'QB-GUARD-1', 'project_id': project.id})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertEqual(self.env['qb.staging'].with_user(self.manager).search([('id', '=', row.id)]), row)
+        self.assertFalse(self.env['qb.staging'].with_user(self.manager_b).search([('id', '=', row.id)]))
+
+    def test_10_odd_realm_ids_are_refused(self):
+        self.authenticate('qb-guard-admin', 'qb-guard-admin')
+        for realm in ('1/../x?y', '١٢٣', '', '12 3', '²'):
+            with self.subTest(realm=realm):
+                state = self._start()
+                with patch('requests.post', return_value=_token()) as post, mute_logger(CTL):
+                    response = self._callback(code='c', state=state, realmId=realm)
+                self.assertEqual(response.status_code, 400)
+                post.assert_not_called()
+        self.connection.invalidate_recordset()
+        self.assertFalse(self.connection.realm_id)
+
+    def test_11_an_error_without_the_state_shows_no_foreign_text(self):
+        self.authenticate('qb-guard-admin', 'qb-guard-admin')
+        self._start()
+        with mute_logger(CTL):
+            response = self._callback(error='access_denied', error_description='FOREIGN-TEXT-QB')
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn('FOREIGN-TEXT-QB', response.text)
+        self.assertIn('invalid_state', response.text)
+
+    def test_12_the_callback_checks_the_permission_again(self):
+        """Who started as Migration Manager and lost the group before coming back exchanges no code."""
+        self.authenticate('qb-guard-manager', 'qb-guard-manager')
+        state = self._start()
+        field = 'group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'
+        self.manager.write({field: [(3, self.env.ref(MGR).id), (4, self.env.ref('base.group_user').id)]})
+        self.assertTrue(self.connection.with_user(self.manager).read(['oauth_client_id']))
+        with patch('requests.post', return_value=_token()) as post, mute_logger(CTL, 'odoo.http'):
+            response = self._callback(code='c', state=state, realmId='1')
+        self.assertEqual(response.status_code, 403)
+        post.assert_not_called()
+        self.connection.invalidate_recordset()
+        self.assertFalse(self.connection.realm_id)
+
+    def test_13_an_odd_refresh_expiry_shows_the_error_page(self):
+        self.authenticate('qb-guard-admin', 'qb-guard-admin')
+        got = {}
+        for value in ('abc', 1e30):
+            state = self._start()
+            with patch('requests.post', return_value=_token(x_refresh_token_expires_in=value)), \
+                    mute_logger(CTL, 'odoo.http'):
+                got[str(value)] = self._callback(code='c', state=state, realmId='1').status_code
+        self.assertEqual(got, {'abc': 400, '1e+30': 400})
+        self.connection.invalidate_recordset()
+        self.assertFalse(self.connection.realm_id)
+
+    def test_14_the_form_offers_what_the_user_can_do(self):
+        no_secret = self.env['qb.connection'].create({'name': 'No secret', 'connection_type': 'oauth',
+                                                      'oauth_client_id': 'client-id'})
+        with self.assertRaisesRegex(UserError, 'administrator'):
+            no_secret.with_user(self.manager).action_connect_qbo()
+        arch = etree.fromstring(self.env['qb.connection'].get_view(view_type='form')['arch'])
+        self.assertEqual(arch.xpath("//button[@name='action_test_connection']")[0].get('invisible'),
+                         "connection_type != 'oauth'")
