@@ -24,7 +24,8 @@
                 <header>
                     <button name="action_connect_qbo" type="object" string="Connect to QuickBooks Online"
                             class="btn-primary" invisible="connection_type != 'oauth'"/>
-                    <button name="action_test_connection" type="object" string="Test Connection"/>
+                    <button name="action_test_connection" type="object" string="Test Connection"
+                            invisible="connection_type != 'oauth'"/>
                 </header>
                 <sheet>
                     <group>

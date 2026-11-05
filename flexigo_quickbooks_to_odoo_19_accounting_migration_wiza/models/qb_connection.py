@@ -187,6 +187,9 @@ class QbConnection(models.Model):
         self.ensure_one()
         self._check_can_manage()
         if not self.oauth_client_id or not self.sudo().oauth_client_secret_encrypted:
+            if not self.env.user.has_group('base.group_system'):  # the Client Secret is a Settings-only field
+                raise UserError(_('Ask an administrator (Settings) to fill in the Client ID and the Client Secret of '
+                                  'your Intuit app on this connection first: only administrators see the secret.'))
             raise UserError(_('Fill in the Client ID and the Client Secret of your Intuit app first.'))
         return {'type': 'ir.actions.act_url', 'url': '/qb/oauth/authorize?connection_id=%d' % self.id, 'target': 'self'}
 

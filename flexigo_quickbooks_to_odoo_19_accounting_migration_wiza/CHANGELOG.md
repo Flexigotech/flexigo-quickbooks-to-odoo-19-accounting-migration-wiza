@@ -1,5 +1,12 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 18.0.1.0.3 (2026-11-05)
+- Each QuickBooks connection and staging row stays in its company: a Migration Manager of another company no longer
+  sees a connection, starts its authorization or writes its company and tokens (there were no company rules).
+- An odd refresh-token lifetime from QuickBooks shows the error page instead of a server error.
+- "Test Connection" only shows on QuickBooks Online connections.
+- A Migration Manager who is not an administrator is told to ask one for the Client Secret, which only administrators see.
+
 ## 18.0.1.0.2 (2026-10-23)
 - QuickBooks Online can be connected from Odoo. The connection form has the Client ID and Secret, the Redirect URI
   to register in Intuit and a "Connect to QuickBooks Online" button. Before, the form had no such fields, the
