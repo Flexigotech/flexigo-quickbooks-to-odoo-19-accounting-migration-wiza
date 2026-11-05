@@ -27,12 +27,17 @@ class QuickBooksOAuthController(http.Controller):
         return request.render('%s.qb_oauth_error' % MODULE, {'error': error, 'error_description': description},
                               status=400)
 
+    def _connection(self, connection_id):
+        """The connection as the session's user sees it: the company rules hide the connections of other companies."""
+        connection = request.env['qb.connection'].browse(connection_id).exists()
+        return connection and connection.search([('id', '=', connection.id)])
+
     @http.route('/qb/oauth/authorize', type='http', auth='user')
     def initiate_oauth(self, connection_id=None, **kw):
         """Send the user to Intuit with a fresh state, kept in the session for the callback."""
         if not re.fullmatch(r'[0-9]+', str(connection_id or '')):
             return request.not_found()
-        connection = request.env['qb.connection'].browse(int(connection_id)).exists()
+        connection = self._connection(int(connection_id))
         if not connection:
             return request.not_found()
         connection._check_can_manage()
@@ -60,7 +65,7 @@ class QuickBooksOAuthController(http.Controller):
         realm_id = kw.get('realmId')
         if not code or not re.fullmatch(r'[0-9]+', realm_id or ''):
             return self._error('invalid_request', 'QuickBooks did not send the authorization code or the company (realmId).')
-        connection = request.env['qb.connection'].browse(pending.get('connection_id')).exists()
+        connection = self._connection(pending.get('connection_id'))
         if not connection:
             return self._error('connection_not_found', 'The QuickBooks connection of this authorization no longer exists.')
         connection._check_can_manage()  # the client secret goes to Intuit below
@@ -89,12 +94,12 @@ class QuickBooksOAuthController(http.Controller):
                 'oauth_access_token_encrypted': token_data['access_token'],
                 'oauth_refresh_token_encrypted': token_data['refresh_token'],
             }
-        except (ValueError, KeyError, TypeError):
+            if token_data.get('x_refresh_token_expires_in'):
+                values['oauth_refresh_token_expiry'] = fields.Datetime.now() + timedelta(
+                    seconds=int(token_data['x_refresh_token_expires_in']))
+        except (ValueError, KeyError, TypeError, OverflowError):
             return self._error('token_exchange_failed', 'QuickBooks answered without the tokens. Try again.')
         connection.write({'realm_id': realm_id, 'is_validated': False})
-        if token_data.get('x_refresh_token_expires_in'):
-            values['oauth_refresh_token_expiry'] = fields.Datetime.now() + timedelta(
-                seconds=int(token_data['x_refresh_token_expires_in']))
         connection.sudo().write(values)  # admin-only fields, encrypted by the model's write()
         _logger.info("QuickBooks OAuth: tokens stored for connection %s", connection.id)
         return request.redirect('/web#id=%d&model=qb.connection&view_type=form' % connection.id)
