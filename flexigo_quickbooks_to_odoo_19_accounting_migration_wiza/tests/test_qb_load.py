@@ -190,7 +190,7 @@ class TestQbLoad(RelayStandIn, TransactionCase):
         self.assertIn('customer 1: deleted in Odoo', load.error_messages)
         self.assertIn('term 3: deleted in Odoo', load.error_messages)
 
-    def test_04_a_tax_code_never_becomes_a_tax_and_invoices_bills_and_the_trial_balance_wait(self):
+    def test_04_a_tax_code_never_becomes_a_tax_and_invoices_and_bills_go_into_the_opening(self):
         Tax = self.env['account.tax'].with_context(active_test=False)
         before = Tax.search_count([])
         self._load()
@@ -199,7 +199,7 @@ class TestQbLoad(RelayStandIn, TransactionCase):
                                                               ('object_type', 'in', ('taxcode', 'invoice', 'bill',
                                                                                      'custom'))])
         self.assertEqual(sorted(staged.mapped('object_type')), ['bill', 'custom', 'invoice', 'taxcode'])
-        for staging in staged:
+        for staging in staged.filtered(lambda s: s.object_type != 'custom'):   # the Trial Balance: test_qb_opening
             self.assertIsNone(self.connection._migration_load_vals(staging), staging.object_type)
             self.assertFalse(self._loaded(staging.object_type, staging.source_id))
 
@@ -258,4 +258,7 @@ class TestQbLoad(RelayStandIn, TransactionCase):
         self.assertFalse(self._loaded('class', '7'))   # no mapping: said, not guessed
         self.assertIn('class 7:', load.error_messages)
         self.assertNotIn('class 6', load.error_messages)
-        self.assertEqual(load.records_failed, 3)   # account 90, term 6 and class 7
+        # account 90, term 6 and class 7; and the Trial Balance of these tests (a debit and no credit, no receivable
+        # account for the open invoice) makes no opening entry (test_qb_opening)
+        self.assertEqual(load.records_failed, 4)
+        self.assertIn('custom TrialBalance: ', load.error_messages)
