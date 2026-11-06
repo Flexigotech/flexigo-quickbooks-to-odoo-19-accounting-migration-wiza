@@ -45,61 +45,6 @@ class QboApiClient:
     def _send_direct(self, method: str, path: str, **kwargs):
         return self.session.request(method, f"{self.base_url}/{path}", **kwargs)
 
-    def query(self, query_string: str) -> List[Dict[str, Any]]:
-        """
-        Execute a QBO SQL query (Accounting API)
-
-        FR-008: Primary method for extraction
-        FR-009: Resumable via query position
-        """
-        path = f"v3/company/{self.realm_id}/query"
-        params = {'minorversion': self.minor_version}
-
-        records = []
-        offset = 0
-        limit = 1000
-
-        while True:
-            paginated_query = f"{query_string} MAXRESULTS {limit} STARTPOSITION {offset + 1}"
-
-            # FR-007: Exponential backoff on 429
-            retry_count = 0
-            while retry_count < self.max_retries:
-                try:
-                    response = self.send('GET', path, params={**params, 'query': paginated_query}, timeout=30)
-
-                    if response.status_code == 200:
-                        data = response.json()
-                        batch = data.get('QueryResponse', [])
-                        records.extend(batch)
-
-                        if len(batch) < limit:
-                            # No more records
-                            break
-
-                        offset += limit
-                        retry_count = 0  # Reset retry counter on success
-                        break
-
-                    elif response.status_code == 429:  # Rate limit
-                        wait_time = (2 ** retry_count)  # Exponential backoff
-                        _logger.warning(f"Rate limited. Waiting {wait_time}s before retry...")
-                        time.sleep(wait_time)
-                        retry_count += 1
-
-                    else:
-                        _logger.error(f"Query failed: HTTP {response.status_code}")
-                        raise Exception(f"API error: {response.status_code}")
-
-                except Exception as e:
-                    if retry_count < self.max_retries - 1:
-                        retry_count += 1
-                        time.sleep(2 ** retry_count)
-                    else:
-                        raise
-
-        return records
-
     def batch_query(self, queries: List[str]) -> List[Dict[str, Any]]:
         """
         FR-006: Use Batch endpoint for bulk reads (up to 30 operations per call)
