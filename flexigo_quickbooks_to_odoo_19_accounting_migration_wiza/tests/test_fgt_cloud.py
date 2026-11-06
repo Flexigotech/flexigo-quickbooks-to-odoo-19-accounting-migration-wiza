@@ -266,7 +266,8 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
         self.delete.reset_mock()
         with patch.object(type(self.env.cr.postcommit), 'add') as after_commit:
             hooks.uninstall_hook(self.env)                  # after the commit: the relay is not in the transaction
-        after_commit.assert_called_once()
+        self.assertTrue(any(getattr(c.args[0], 'func', None) is hooks._forget_after_uninstall
+                            for c in after_commit.call_args_list))
         self.delete.assert_not_called()
 
     def test_10_only_an_administrator_deletes_a_bought_connection(self):
