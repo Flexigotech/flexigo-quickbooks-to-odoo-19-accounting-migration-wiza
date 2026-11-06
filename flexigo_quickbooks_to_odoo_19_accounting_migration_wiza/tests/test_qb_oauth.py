@@ -15,7 +15,6 @@ from odoo.tests import HttpCase, new_test_user, tagged
 from odoo.tools import mute_logger
 
 from ..lib.qbo_api_client import QboApiClient
-from ..lib.qbo_reports_client import QboReportsClient
 from .test_fgt_cloud import _direct
 
 
@@ -116,7 +115,6 @@ class TestQbOauth(HttpCase):
     def test_05_sandbox_talks_to_the_quickbooks_online_sandbox(self):
         sandbox = 'https://sandbox-quickbooks.api.intuit.com'
         self.assertEqual(QboApiClient('token', '9130', sandbox=True).base_url, sandbox)
-        self.assertEqual(QboReportsClient('token', '9130', sandbox=True).base_url, sandbox)
         self.connection.write({'is_sandbox': True, 'realm_id': '9130', 'oauth_access_token_encrypted': 'token'})
         info = MagicMock(status_code=200)
         info.json.return_value = {'CompanyInfo': {'CompanyName': 'Sandbox Co'}}
