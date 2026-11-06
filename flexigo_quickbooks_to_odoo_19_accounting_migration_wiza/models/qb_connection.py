@@ -192,7 +192,7 @@ class QbConnection(models.Model):
     def unlink(self):
         # a new connection goes through FlexigoTech Cloud: deleting a bought one cannot be undone
         self.check_access('unlink')
-        if not self.env.is_admin() and any(connection.fgt_route != 'cloud' for connection in self):
+        if not self.env.is_system() and any(connection.fgt_route != 'cloud' for connection in self):
             raise UserError(_('Only an administrator deletes a connection bought before FlexigoTech Cloud: a new one '
                               'would go through FlexigoTech Cloud.'))
         return super().unlink()
@@ -243,6 +243,9 @@ class QbConnection(models.Model):
         return getattr(requests, method.lower())('%s/%s' % (QBO_HOSTS[bool(self.is_sandbox)], path), **kwargs)
 
     def _qbo_send_cloud(self, method, path, **kwargs):
+        if not self.fgt_consent:   # withdrawn after saving: nothing goes out (kb_conector_pasarela_pausas §13)
+            raise UserError(_('Tick "Send my Intuit app to FlexigoTech Cloud" on this connection first: without it '
+                              'nothing goes out.'))
         cloud = self.env['flexigotech.cloud']
         cloud.ensure_service(FGT_MODULE, raise_error=True)
         if path == INTUIT_TOKEN_URL:
@@ -298,7 +301,7 @@ class QbConnection(models.Model):
         self._check_can_manage()
         if self.fgt_route == 'cloud':
             self.env['flexigotech.cloud'].ensure_service(FGT_MODULE, raise_error=True)
-            if not self.oauth_client_id or not self.sudo().fgt_saved_at:
+            if not self.oauth_client_id or not self.sudo().fgt_saved_at or not self.fgt_consent:
                 raise UserError(_('Ask an administrator (Settings) to fill in the Client ID and the Client Secret of '
                                   'your Intuit app on this connection, with the consent to send them to FlexigoTech '
                                   'Cloud, first.'))
@@ -335,9 +338,9 @@ class QbConnection(models.Model):
                 self.is_validated = False
                 self.validation_message = f"Connection failed: HTTP {response.status_code}"
 
-        except RedirectWarning:
-            raise   # no FlexigoTech Cloud service: the button says so, and nothing was called
         except Exception as e:
+            if self.fgt_route == 'cloud' and isinstance(e, (UserError, RedirectWarning)):
+                raise   # FlexigoTech Cloud: no service or consent, or it refused; the button says so
             self.is_validated = False
             # FR-004: Never log secrets
             self.validation_message = f"Connection failed: {str(e)[:100]}"
