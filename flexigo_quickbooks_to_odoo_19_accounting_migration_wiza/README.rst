@@ -3,7 +3,7 @@ QuickBooks to Odoo 19 Migration Wizard
 =====================================
 
 **Module:** ``flexigo_quickbooks_to_odoo_19_accounting_migration_wiza``
-**License:** LGPL-3
+**License:** OPL-1
 **Status:** Production Ready
 **Author:** FlexigoTech
 
@@ -14,8 +14,10 @@ A wizard-driven, auditable, idempotent toolkit for extracting accounting data fr
 QuickBooks Online (via Intuit Accounting API) or QuickBooks Desktop (via export upload)
 and loading it into Odoo 19 with a repeatable, reconciled cutover process.
 
-This module is **FREE** (LGPL-3 license). The actual migration service is delivered as a paid
-implementation engagement by FlexigoTech.
+New QuickBooks Online connections go through FlexigoTech Cloud, which keeps the client ID and secret of your
+Intuit app and the QuickBooks tokens encrypted and needs its trial or subscription (Settings > FlexigoTech Cloud).
+Without it nothing is sent and nothing in Odoo is deleted. Connections made before 1.1.0 keep working as bought,
+directly from Odoo.
 
 Key Features
 ============
@@ -61,7 +63,9 @@ Supported Export Formats
 Installation
 ============
 
-1. Install the module via the Odoo App Store or direct upload
+1. Install the module via the Odoo App Store or direct upload. Coming from a version before 1.1.0: put
+   ``flexigotech_cloud`` in the same addons path, restart and update the module (Apps > Upgrade, or
+   ``-u flexigo_quickbooks_to_odoo_19_accounting_migration_wiza``); restarting without updating does not load it.
 2. Enable the QuickBooks Migration Wizard from the Apps menu
 3. Configure your Intuit OAuth credentials or prepare QBDT export files
 4. Create a migration project and follow the wizard
@@ -226,7 +230,7 @@ Free module documentation: `FlexigoTech Docs <https://docs.flexigotech.com>`__
 License
 =======
 
-This module is licensed under the **LGPL-3** license. See LICENSE file for details.
+This module is licensed under the Odoo Proprietary License v1.0 (**OPL-1**). See LICENSE file for details.
 
 Changelog
 =========
