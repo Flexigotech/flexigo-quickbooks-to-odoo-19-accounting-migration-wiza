@@ -1,0 +1,16 @@
+{
+  "plan": "connector",
+  "precios": {
+    "standard_month": 4900,
+    "standard_year": 49000,
+    "pro_month": 9800,
+    "pro_year": 98000
+  },
+  "nube": "Sends the calls of your QuickBooks Online connections (company information, accounting queries and reports) to Intuit's QuickBooks Online API, with the client ID and secret of your Intuit app and the QuickBooks tokens kept encrypted on our servers.",
+  "nube_es": "Envía las llamadas de tus conexiones de QuickBooks Online (datos de la empresa, consultas contables e informes) a la API de QuickBooks Online de Intuit, con el ID y el secreto de tu app de Intuit y los tokens de QuickBooks guardados cifrados en nuestros servidores.",
+  "estricto": true,
+  "plataformas": [
+    "quickbooks",
+    "quickbooks-test"
+  ]
+}
