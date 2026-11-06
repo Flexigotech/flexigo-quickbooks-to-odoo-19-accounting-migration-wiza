@@ -144,11 +144,9 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
             bought.action_test_connection()
             self.assertTrue(bought.is_validated)
             bought._qbo_api_client().get_company_info()
-            bought._qbo_reports_client().get_trial_balance('2026-10-31')
             bought.refresh_access_token()
         urls = [c.args[0] for c in get.call_args_list]
-        self.assertEqual(urls, [API + '/v3/company/9130/companyinfo/9130', API + '/v3/company/9130/companyinfo/9130',
-                                API + '/v3/company/9130/reports/TrialBalance'])
+        self.assertEqual(urls, [API + '/v3/company/9130/companyinfo/9130', API + '/v3/company/9130/companyinfo/9130'])
         self.assertEqual({c.kwargs['headers']['Authorization'] for c in get.call_args_list}, {'Bearer access-token'})
         self.assertEqual(post.call_args.args[0], TOKEN_URL)
         self.assertEqual(post.call_args.kwargs['auth'], ('client-id', 'client-secret'))
@@ -167,30 +165,15 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
             api = connection._qbo_api_client()
             api.batch_query(['SELECT * FROM Item'])
             api.get_company_info()
-            reports = connection._qbo_reports_client()
-            for report in (reports.get_trial_balance, reports.get_aged_receivables, reports.get_aged_payables,
-                           reports.get_inventory_valuation):
-                report('2026-10-31')
-            connection.max_retries = 1                       # the query loop: one call, the error comes back
-            self.relay_answer = _response(500)
-            with self.assertRaises(Exception), mute_logger('odoo.addons.%s.lib.qbo_api_client' % MODULE):
-                connection._qbo_api_client().query('SELECT * FROM Account')
             connection.refresh_access_token()               # FlexigoTech Cloud renews the access itself
         for mock in (get, post, session, self.store):
             mock.assert_not_called()
-        self.assertEqual([c.args for c in self.relay.call_args_list], [
+        self.assertEqual([c.args for c in self.relay.call_args_list], [   # the extraction: test_qb_extract
             (MODULE, platform, 'GET', 'v3/company/9130/companyinfo/9130'),
             (MODULE, platform, 'POST', 'v3/company/9130/batch'),
             (MODULE, platform, 'GET', 'v3/company/9130/companyinfo/9130'),
-            (MODULE, platform, 'GET', 'v3/company/9130/reports/TrialBalance'),
-            (MODULE, platform, 'GET', 'v3/company/9130/reports/AgedReceivables'),
-            (MODULE, platform, 'GET', 'v3/company/9130/reports/AgedPayables'),
-            (MODULE, platform, 'GET', 'v3/company/9130/reports/InventoryValuationSummary'),
-            (MODULE, platform, 'GET', 'v3/company/9130/query'),
         ])
         self.assertEqual(self.relay.call_args_list[0].kwargs['params'], {'minorversion': connection.minorversion})
-        self.assertEqual(self.relay.call_args_list[-1].kwargs['params']['query'],
-                         'SELECT * FROM Account MAXRESULTS 1000 STARTPOSITION 1')
         self.assertTrue(self.ensure.call_args_list)
         self.assertTrue(all(c == call(MODULE, raise_error=True) for c in self.ensure.call_args_list))
         connection.is_sandbox = True
