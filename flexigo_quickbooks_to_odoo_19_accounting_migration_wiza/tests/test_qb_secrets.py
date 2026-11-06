@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
+from .test_fgt_cloud import _direct
+
 SECRETS = {
     'oauth_client_secret_encrypted': 'client-secret',
     'oauth_access_token_encrypted': 'access-token',
@@ -20,8 +22,9 @@ class TestQbSecrets(TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.connection = self.env['qb.connection'].create({
-            'name': 'QB secrets', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'})
+        # 1.1.0: these are the connections bought before FlexigoTech Cloud ('direct'), whose secrets stay here
+        self.connection = _direct(self.env['qb.connection'].create({
+            'name': 'QB secrets', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'}))
         self.connection.write(SECRETS)
         self.env.invalidate_all()
 

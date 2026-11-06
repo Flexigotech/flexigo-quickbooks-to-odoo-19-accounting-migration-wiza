@@ -3,3 +3,4 @@ from . import models
 from . import controllers
 from . import lib
 from . import wizards
+from .hooks import uninstall_hook

@@ -19,7 +19,7 @@ class QboApiClient:
     """
 
     def __init__(self, access_token: str, realm_id: str, minor_version: str = '65',
-                 sandbox: bool = False, concurrency_cap: int = 10, max_retries: int = 5):
+                 sandbox: bool = False, concurrency_cap: int = 10, max_retries: int = 5, send=None):
         """
         Initialize QBO API client
 
@@ -39,6 +39,11 @@ class QboApiClient:
             'Authorization': f'Bearer {access_token}',
             'Accept': 'application/json',
         })
+        # send(method, path, **kwargs): qb.connection._qbo_send, the one way to Intuit (direct or FlexigoTech Cloud)
+        self.send = send or self._send_direct
+
+    def _send_direct(self, method: str, path: str, **kwargs):
+        return self.session.request(method, f"{self.base_url}/{path}", **kwargs)
 
     def query(self, query_string: str) -> List[Dict[str, Any]]:
         """
@@ -47,7 +52,7 @@ class QboApiClient:
         FR-008: Primary method for extraction
         FR-009: Resumable via query position
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/query"
+        path = f"v3/company/{self.realm_id}/query"
         params = {'minorversion': self.minor_version}
 
         records = []
@@ -61,7 +66,7 @@ class QboApiClient:
             retry_count = 0
             while retry_count < self.max_retries:
                 try:
-                    response = self.session.get(url, params={**params, 'query': paginated_query}, timeout=30)
+                    response = self.send('GET', path, params={**params, 'query': paginated_query}, timeout=30)
 
                     if response.status_code == 200:
                         data = response.json()
@@ -107,7 +112,7 @@ class QboApiClient:
         for i in range(0, len(queries), 30):
             batch = queries[i:i + 30]
 
-            url = f"{self.base_url}/v3/company/{self.realm_id}/batch"
+            path = f"v3/company/{self.realm_id}/batch"
             params = {'minorversion': self.minor_version}
 
             batch_body = {
@@ -123,8 +128,8 @@ class QboApiClient:
             retry_count = 0
             while retry_count < self.max_retries:
                 try:
-                    response = self.session.post(
-                        url,
+                    response = self.send(
+                        'POST', path,
                         json=batch_body,
                         params=params,
                         timeout=30
@@ -159,10 +164,10 @@ class QboApiClient:
         """
         FR-005: Get company info for connection test
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/companyinfo/{self.realm_id}"
+        path = f"v3/company/{self.realm_id}/companyinfo/{self.realm_id}"
         params = {'minorversion': self.minor_version}
 
-        response = self.session.get(url, params=params, timeout=30)
+        response = self.send('GET', path, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json().get('CompanyInfo', {})

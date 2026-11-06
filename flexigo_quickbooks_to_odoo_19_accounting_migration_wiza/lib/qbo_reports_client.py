@@ -16,7 +16,7 @@ class QboReportsClient:
     FR-040, FR-041, FR-042, FR-043: Extract reports for reconciliation pack
     """
 
-    def __init__(self, access_token: str, realm_id: str, minor_version: str = '65', sandbox: bool = False):
+    def __init__(self, access_token: str, realm_id: str, minor_version: str = '65', sandbox: bool = False, send=None):
         self.access_token = access_token
         self.realm_id = realm_id
         self.minor_version = minor_version
@@ -28,6 +28,11 @@ class QboReportsClient:
             'Authorization': f'Bearer {access_token}',
             'Accept': 'application/json',
         })
+        # send(method, path, **kwargs): qb.connection._qbo_send, the one way to Intuit (direct or FlexigoTech Cloud)
+        self.send = send or self._send_direct
+
+    def _send_direct(self, method: str, path: str, **kwargs):
+        return self.session.request(method, f"{self.base_url}/{path}", **kwargs)
 
     def get_trial_balance(self, as_of_date: str) -> Dict[str, Any]:
         """
@@ -35,13 +40,13 @@ class QboReportsClient:
 
         as_of_date: YYYY-MM-DD format
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/reports/TrialBalance"
+        path = f"v3/company/{self.realm_id}/reports/TrialBalance"
         params = {
             'minorversion': self.minor_version,
             'as_of_date': as_of_date,
         }
 
-        response = self.session.get(url, params=params, timeout=30)
+        response = self.send('GET', path, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -52,13 +57,13 @@ class QboReportsClient:
         """
         FR-041: Retrieve Aged Receivables report for A/R reconciliation
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/reports/AgedReceivables"
+        path = f"v3/company/{self.realm_id}/reports/AgedReceivables"
         params = {
             'minorversion': self.minor_version,
             'as_of_date': as_of_date,
         }
 
-        response = self.session.get(url, params=params, timeout=30)
+        response = self.send('GET', path, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -69,13 +74,13 @@ class QboReportsClient:
         """
         FR-042: Retrieve Aged Payables report for A/P reconciliation
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/reports/AgedPayables"
+        path = f"v3/company/{self.realm_id}/reports/AgedPayables"
         params = {
             'minorversion': self.minor_version,
             'as_of_date': as_of_date,
         }
 
-        response = self.session.get(url, params=params, timeout=30)
+        response = self.send('GET', path, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json()
@@ -86,13 +91,13 @@ class QboReportsClient:
         """
         FR-043: Retrieve Inventory Valuation report for inventory reconciliation
         """
-        url = f"{self.base_url}/v3/company/{self.realm_id}/reports/InventoryValuationSummary"
+        path = f"v3/company/{self.realm_id}/reports/InventoryValuationSummary"
         params = {
             'minorversion': self.minor_version,
             'as_of_date': as_of_date,
         }
 
-        response = self.session.get(url, params=params, timeout=30)
+        response = self.send('GET', path, params=params, timeout=30)
 
         if response.status_code == 200:
             return response.json()

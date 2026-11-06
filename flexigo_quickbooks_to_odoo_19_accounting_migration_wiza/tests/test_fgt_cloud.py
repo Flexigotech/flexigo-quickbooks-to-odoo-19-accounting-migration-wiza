@@ -173,7 +173,7 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
                 report('2026-10-31')
             connection.max_retries = 1                       # the query loop: one call, the error comes back
             self.relay_answer = _response(500)
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception), mute_logger('odoo.addons.%s.lib.qbo_api_client' % MODULE):
                 connection._qbo_api_client().query('SELECT * FROM Account')
             connection.refresh_access_token()               # FlexigoTech Cloud renews the access itself
         for mock in (get, post, session, self.store):

@@ -1,5 +1,17 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 19.0.1.1.0 (unreleased)
+- New QuickBooks Online connections go through FlexigoTech Cloud, which needs its trial or subscription (Settings >
+  FlexigoTech Cloud): the client ID and secret of your Intuit app go to its vault with your consent and never stay in
+  Odoo, every call to QuickBooks passes through it, and the authorization code is exchanged there, so no QuickBooks
+  token reaches Odoo. Without the service nothing is sent and nothing in Odoo is deleted.
+- Connections made before 1.1.0 keep working exactly as bought ("Direct"): the OAuth from Odoo, "Test Connection" and
+  their tokens encrypted in Odoo. A connection's route never changes, and only an administrator deletes a direct one.
+- Upgrading: put `flexigotech_cloud` in the same addons path, restart and update the module (Apps > Upgrade, or
+  `-u flexigo_quickbooks_to_odoo_19_accounting_migration_wiza`); restarting without updating does not load it.
+- A copy of the database (neutralized) forgets the QuickBooks tokens; uninstalling deletes the Intuit apps kept in
+  FlexigoTech Cloud. New connections default to QuickBooks API minor version 75.
+
 ## 19.0.1.0.7 (2026-11-07)
 - App Store listing: the manifest no longer links to an external website (its description gave a web address for service enquiries; now the e-mail) and the page links only to the support e-mail and to FlexigoTech apps on Odoo Apps (Odoo Apps vendor guidelines). No functional change.
 

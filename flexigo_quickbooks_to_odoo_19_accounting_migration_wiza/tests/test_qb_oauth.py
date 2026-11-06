@@ -16,6 +16,7 @@ from odoo.tools import mute_logger
 
 from ..lib.qbo_api_client import QboApiClient
 from ..lib.qbo_reports_client import QboReportsClient
+from .test_fgt_cloud import _direct
 
 
 @tagged('post_install', '-at_install')
@@ -25,9 +26,10 @@ class TestQbOauth(HttpCase):
         super().setUp()
         self.admin = new_test_user(self.env, login='qb-oauth-admin',
                       groups='base.group_system,flexigo_migration_base.group_migration_manager')
-        self.connection = self.env['qb.connection'].create({
-            'name': 'QB OAuth', 'connection_type': 'oauth', 'oauth_client_id': 'client-id',
-            'oauth_client_secret_encrypted': 'client-secret'})
+        # 1.1.0: the OAuth of a connection bought before FlexigoTech Cloud ('direct'), as it was
+        self.connection = _direct(self.env['qb.connection'].create({
+            'name': 'QB OAuth', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'}))
+        self.connection.write({'oauth_client_secret_encrypted': 'client-secret'})
         self.authenticate('qb-oauth-admin', 'qb-oauth-admin')
 
     def _start(self):
@@ -91,7 +93,7 @@ class TestQbOauth(HttpCase):
         self.assertEqual(self.connection.with_user(self.admin).action_connect_qbo()['url'],
                          '/qb/oauth/authorize?connection_id=%d' % self.connection.id)
         with self.assertRaises(UserError):
-            self.env['qb.connection'].create({'name': 'No client', 'connection_type': 'oauth'}).action_connect_qbo()
+            _direct(self.env['qb.connection'].create({'name': 'No client', 'connection_type': 'oauth'})).action_connect_qbo()
 
     def test_06_who_cannot_change_the_connection_cannot_connect_it(self):
         new_test_user(self.env, login='qb-oauth-internal', groups='base.group_user')
@@ -145,9 +147,9 @@ class TestQbOauthGuards(HttpCase):
         super().setUp()
         new_test_user(self.env, login='qb-guard-admin', groups='base.group_system,%s' % MGR)
         self.manager = new_test_user(self.env, login='qb-guard-manager', groups=MGR)
-        self.connection = self.env['qb.connection'].create({
-            'name': 'QB Guard', 'connection_type': 'oauth', 'oauth_client_id': 'client-id',
-            'oauth_client_secret_encrypted': 'client-secret'})
+        self.connection = _direct(self.env['qb.connection'].create({
+            'name': 'QB Guard', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'}))
+        self.connection.write({'oauth_client_secret_encrypted': 'client-secret'})
         self.company_b = self.env['res.company'].create({'name': 'QB Guard Company B'})
         self.manager_b = new_test_user(self.env, login='qb-guard-manager-b', groups=MGR, company_id=self.company_b.id,
                                        company_ids=[(6, 0, [self.company_b.id])])
@@ -236,8 +238,8 @@ class TestQbOauthGuards(HttpCase):
         self.assertFalse(self.connection.realm_id)
 
     def test_14_the_form_offers_what_the_user_can_do(self):
-        no_secret = self.env['qb.connection'].create({'name': 'No secret', 'connection_type': 'oauth',
-                                                      'oauth_client_id': 'client-id'})
+        no_secret = _direct(self.env['qb.connection'].create({'name': 'No secret', 'connection_type': 'oauth',
+                                                              'oauth_client_id': 'client-id'}))
         with self.assertRaisesRegex(UserError, 'administrator'):
             no_secret.with_user(self.manager).action_connect_qbo()
         arch = etree.fromstring(self.env['qb.connection'].get_view(view_type='form')['arch'])
