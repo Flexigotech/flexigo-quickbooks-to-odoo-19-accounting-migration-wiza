@@ -65,6 +65,15 @@ QBO_ITEM_TYPES = {
     'NonInventory': {'type': 'consu', 'is_storable': False},
     'Service': {'type': 'service', 'is_storable': False},
 }
+# BW step 4b-2b, the open items of the opening entry, by staging type: (partner type, its reference, the reference of
+# its account, the Odoo type of that account, sign). Finance.xsd: Invoice and Bill (Balance, HomeBalance, DueDate,
+# ARAccountRef, APAccountRef). Credit notes are other entities (CreditMemo, VendorCredit), not extracted yet.
+QBO_OPEN_ITEMS = {
+    'invoice': ('customer', 'CustomerRef', 'ARAccountRef', 'asset_receivable', 1),
+    'bill': ('vendor', 'VendorRef', 'APAccountRef', 'liability_payable', -1),
+}
+QBO_AGING = {'asset_receivable': 'ar_aging', 'liability_payable': 'ap_aging'}
+RECONCILIATION_TOLERANCE = 0.01
 
 def _fernet(env):
     """FR-004: the Fernet keys are MIGRATION_ENCRYPTION_KEY when it is a valid key, and one derived from the database
@@ -382,10 +391,11 @@ class QbConnection(models.Model):
         """What the engine loads from one staged record (BW plan §2.1, the master data), in the company of the project
         and archived when it is inactive in QuickBooks. A record that maps to one already in Odoo is linked to it with
         no values, so loading never changes it; None leaves it out: a tax code is only mapped, never a tax, and the open
-        invoices, the bills and the Trial Balance are step 4b-2b. A UserError tells the user what to map."""
+        invoices and bills are lines of the opening entry the Trial Balance makes. A UserError tells the user what to map."""
         loader = {'account': self._qb_load_account, 'term': self._qb_load_term, 'class': self._qb_load_dimension,
                   'location': self._qb_load_dimension, 'customer': self._qb_load_partner,
-                  'vendor': self._qb_load_partner, 'item': self._qb_load_item}.get(staging.object_type)
+                  'vendor': self._qb_load_partner, 'item': self._qb_load_item,
+                  TRIAL_BALANCE: self._qb_load_opening}.get(staging.object_type)
         return loader(staging, staging.raw_payload or {}) if loader else None
 
     def _qb_existing(self, staging, record):
@@ -510,6 +520,141 @@ class QbConnection(models.Model):
             if account:
                 vals[field] = account.id
         return 'product.template', vals
+
+    def _qb_load_opening(self, staging, report):
+        """BW plan §2.1: the Trial Balance at its end date becomes ONE posted opening entry, made once (its link), and
+        every time it is loaded Odoo's balance at that date is reconciled with it, account by account."""
+        project = staging.project_id
+        balances, cutoff = self._qb_trial_balance(project, report)
+        items = self._qb_open_items(project, balances)
+        if not self.env['migration.record.link'].search_count([
+                ('project_id', '=', project.id), ('object_type', '=', staging.object_type),
+                ('source_id', '=', staging.source_id)]):
+            self._qb_existing(staging, self._qb_opening_move(project, balances, items, cutoff))
+        accounts = self.env['account.account'].with_company(project.company_id).browse(
+            list(dict.fromkeys([*balances, *items])))
+        self._qb_reconcile(project, balances, accounts, cutoff)
+        return 'account.move', {}
+
+    def _qb_trial_balance(self, project, report):
+        """{account id: balance} of Intuit's Trial Balance report (Debit minus Credit of each row, by the link of its
+        account) and its end date. The report is in the home currency, which must be the company's."""
+        header, currency = report.get('Header') or {}, project.company_id.currency_id
+        if header.get('Currency', currency.name) != currency.name:
+            raise UserError(_('The Trial Balance of QuickBooks is in %(source)s and %(company)s works in %(target)s.',
+                              source=header['Currency'], company=project.company_id.name, target=currency.name))
+        titles = [column.get('ColTitle') for column in (report.get('Columns') or {}).get('Column', [])]
+        if not header.get('EndPeriod') or not {'Debit', 'Credit'} <= set(titles):
+            raise UserError(_('The Trial Balance of QuickBooks has no end date or no Debit and Credit columns.'))
+        debit, credit = titles.index('Debit'), titles.index('Credit')
+        balances, missing = {}, []
+        for row in (report.get('Rows') or {}).get('Row', []):
+            cells = row.get('ColData') or []
+            if not cells or not cells[0].get('id'):
+                continue   # the TOTAL summary
+            account = self._qb_linked(project, 'account', cells[0]['id'])
+            amount = float(cells[debit].get('value') or 0) - float(cells[credit].get('value') or 0)
+            if not account:
+                missing.append(cells[0].get('value') or cells[0]['id'])
+            elif amount:
+                balances[account.id] = balances.get(account.id, 0.0) + amount
+        if missing:
+            raise UserError(_('These accounts of the Trial Balance are not loaded, so there is no opening entry: '
+                              '%s. Map them in the mapping set of the project and load again.', ', '.join(missing)))
+        return balances, fields.Date.to_date(header['EndPeriod'])
+
+    def _qb_open_items(self, project, balances):
+        """{account id: [lines]} of the open invoices and bills staged: its partner by its link, DocNumber as label
+        (the ref of a line is its entry's in Odoo), DueDate, and its Balance; in another currency, Balance in it and
+        HomeBalance in the company's. The account is the one the item names, else the only receivable or payable one
+        of the Trial Balance. What cannot be placed is said, not guessed."""
+        company = project.company_id
+        currency = company.currency_id
+        in_balance = self.env['account.account'].with_company(company).browse(list(balances))
+        items, problems = {}, []
+        for staging in self.env['migration.staging.record'].search([
+                ('project_id', '=', project.id), ('object_type', 'in', list(QBO_OPEN_ITEMS)),
+                ('validation_status', '!=', 'invalid')], order='object_type, id'):
+            partner_type, partner_ref, account_ref, account_type, sign = QBO_OPEN_ITEMS[staging.object_type]
+            row = staging.raw_payload or {}
+            if not row.get('Balance'):
+                continue
+            label = row.get('DocNumber') or '%s %s' % (QBO_ENTITIES[staging.object_type][0], staging.source_id)
+            partner = self._qb_linked(project, partner_type, (row.get(partner_ref) or {}).get('value'))
+            account = self._qb_linked(project, 'account', (row.get(account_ref) or {}).get('value'))
+            if not account:
+                account = in_balance.filtered(lambda a: a.account_type == account_type)
+            code = (row.get('CurrencyRef') or {}).get('value') or currency.name
+            foreign = code != currency.name and self.env['res.currency'].search([('name', '=', code)], limit=1)
+            home = row.get('HomeBalance') if code != currency.name else row['Balance']
+            if not partner or len(account) != 1 or code != currency.name and not (foreign and home is not None):
+                problems.append(label)
+                continue
+            line = {'account_id': account.id, 'partner_id': partner.id, 'name': label,
+                    'date_maturity': row.get('DueDate') or False, 'balance': currency.round(sign * float(home))}
+            if foreign:
+                line.update(currency_id=foreign.id, amount_currency=foreign.round(sign * float(row['Balance'])))
+            items.setdefault(account.id, []).append(line)
+        if problems:
+            raise UserError(_('These open invoices or bills cannot go into the opening entry (their customer or vendor '
+                              'is not loaded, the Trial Balance has no single receivable or payable account for them, '
+                              'or their currency is not active in Odoo or has no HomeBalance): %s.', ', '.join(problems)))
+        return items
+
+    def _qb_opening_move(self, project, balances, items, cutoff):
+        """One posted entry in the journal Odoo's own opening entry takes (the first general journal of the company),
+        one line per account with its balance; a receivable or payable account by its open items, and what they do not
+        cover on a line with no partner, so the entry adds up and the A/R or A/P tie-out shows it. A Trial Balance
+        that does not balance creates nothing."""
+        company = project.company_id
+        currency = company.currency_id
+        if not currency.is_zero(sum(balances.values())):
+            raise UserError(_('The Trial Balance of QuickBooks at %(date)s does not balance (debit %(debit)s, credit '
+                              '%(credit)s): no opening entry is made.', date=cutoff,
+                              debit=currency.round(sum(v for v in balances.values() if v > 0)),
+                              credit=currency.round(-sum(v for v in balances.values() if v < 0))))
+        Account = self.env['account.account'].with_company(company)
+        lines = []
+        for account_id in dict.fromkeys([*balances, *items]):
+            own = items.get(account_id, [])
+            rest = currency.round(balances.get(account_id, 0.0) - sum(line['balance'] for line in own))
+            lines += own
+            if not currency.is_zero(rest):
+                aging = Account.browse(account_id).account_type in QBO_AGING
+                lines.append({'account_id': account_id, 'balance': rest, 'name': _(
+                    'QuickBooks balance not covered by open items') if aging else _('QuickBooks opening balance')})
+        move = self.env['account.move'].with_company(company).create(dict(
+            company._get_default_opening_move_values(), date=cutoff,
+            ref=_('QuickBooks opening balance at %s', cutoff), line_ids=[Command.create(line) for line in lines]))
+        move.action_post()
+        return move
+
+    def _qb_reconcile(self, project, balances, accounts, cutoff):
+        """BW plan §2.1: Odoo's posted balance at the cut-off against QuickBooks', account by account (Trial Balance),
+        and each receivable or payable account against its lines with a partner (A/R, A/P aging), to
+        migration.reconciliation with a tolerance of 0.01: what does not match blocks «reconciled»."""
+        company = project.company_id
+        Line = self.env['account.move.line'].with_company(company)
+        domain = [('company_id', '=', company.id), ('parent_state', '=', 'posted'), ('date', '<=', cutoff),
+                  ('account_id', 'in', accounts.ids)]
+        odoo = {account.id: total for account, total in Line._read_group(domain, ['account_id'], ['balance:sum'])}
+        open_items = {account.id: total for account, total in Line._read_group(
+            [*domain, ('partner_id', '!=', False)], ['account_id'], ['balance:sum'])}
+        Reconciliation = self.env['migration.reconciliation']
+        for account in accounts:
+            for kind, target in (('trial_balance', odoo), (QBO_AGING.get(account.account_type), open_items)):
+                if not kind:
+                    continue
+                key = {'project_id': project.id, 'reconciliation_type': kind, 'account_code': account.code}
+                vals = {'account_name': account.name, 'tolerance': RECONCILIATION_TOLERANCE,
+                        'source_amount': company.currency_id.round(balances.get(account.id, 0.0)),
+                        'target_amount': company.currency_id.round(target.get(account.id, 0.0)),
+                        'reconciliation_date': fields.Datetime.now()}
+                line = Reconciliation.search([(name, '=', value) for name, value in key.items()], limit=1)
+                if line:
+                    line.write(vals)
+                else:
+                    Reconciliation.create(dict(key, **vals))
 
     def _encrypt_stored_secrets(self):
         """1.0.3 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
