@@ -19,6 +19,15 @@
   a connection already saved in FlexigoTech Cloud no longer change (create a new connection instead).
 - The unused report client (it sent `as_of_date`, which QuickBooks Online reports do not take) and the query helper
   that never ended are gone.
+- Load of the master data from the staging into Odoo (Load on a migration run), in the company of the project and
+  archived when inactive in QuickBooks; loading again updates the same records and never creates again what you
+  deleted. Accounts are mapped to your chart (an Account Type value of the project's mapping set, else the account
+  number) and only created when the mapping gives the code of a new one; customers and vendors become partners,
+  inventory, non-inventory and service items products (with their income and expense accounts once those are
+  loaded), terms with due days payment terms (with their early payment discount), and classes and departments
+  analytic accounts in the plan of the dimension mapping. A tax code is never created as a tax; date-driven terms
+  and unmapped accounts, classes and departments are listed in the run instead of being guessed. Open invoices and
+  bills, the opening balance and the reconciliation come next.
 
 ## 19.0.1.0.5 (2026-11-05)
 - Each QuickBooks connection and staging row stays in its company: a Migration Manager of another company no longer
