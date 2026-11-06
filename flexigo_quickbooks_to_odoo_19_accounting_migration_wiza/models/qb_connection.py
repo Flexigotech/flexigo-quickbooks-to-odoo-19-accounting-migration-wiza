@@ -6,7 +6,7 @@ import logging
 import os
 import requests
 from datetime import datetime, timedelta
-from odoo import models, fields, api, _
+from odoo import Command, models, fields, api, _
 from odoo.exceptions import RedirectWarning, UserError
 
 _logger = logging.getLogger(__name__)
@@ -35,6 +35,36 @@ QBO_ENTITIES = {
 }
 TRIAL_BALANCE = 'custom'
 QBO_PAGE = 1000
+# BW step 4b-2a, the type of an account the user creates: Intuit's AccountType (AccountTypeEnum, and the two
+# AccountSubType values Odoo has a type of its own for) → account_type of Odoo. Intuit's schema:
+# github.com/intuit/QuickBooks-V3-Java-SDK, ipp-v3-java-data/src/main/xsd/Finance.xsd (AccountTypeEnum,
+# AccountSubTypeEnum); developer.intuit.com/quickbooks-online/docs/learn/learn-basic-bookkeeping/accounts.
+QBO_ACCOUNT_TYPES = {
+    'Bank': 'asset_cash',
+    'Accounts Receivable': 'asset_receivable',
+    'Other Current Asset': 'asset_current',
+    'Fixed Asset': 'asset_fixed',
+    'Other Asset': 'asset_non_current',
+    'Accounts Payable': 'liability_payable',
+    'Credit Card': 'liability_credit_card',
+    'Other Current Liability': 'liability_current',
+    'Long Term Liability': 'liability_non_current',
+    'Equity': 'equity',
+    'Income': 'income',
+    'Other Income': 'income_other',
+    'Cost of Goods Sold': 'expense_direct_cost',
+    'Expense': 'expense',
+    'Other Expense': 'expense_other',
+    'Non-Posting': 'off_balance',
+}
+QBO_ACCOUNT_SUBTYPES = {'PrepaidExpenses': 'asset_prepayments', 'Depreciation': 'expense_depreciation'}
+# Item.Type (ItemTypeEnum of the same Finance.xsd) → product of Odoo; the other kinds (Category, Group, Assembly…)
+# are no product and stay out.
+QBO_ITEM_TYPES = {
+    'Inventory': {'type': 'consu', 'is_storable': True},
+    'NonInventory': {'type': 'consu', 'is_storable': False},
+    'Service': {'type': 'service', 'is_storable': False},
+}
 
 def _fernet(env):
     """FR-004: the Fernet keys are MIGRATION_ENCRYPTION_KEY when it is a valid key, and one derived from the database
@@ -347,6 +377,139 @@ class QbConnection(models.Model):
         return {'source_id': payload['Id'], 'source_realm': self.realm_id, 'normalized_name': name or False,
                 'normalized_code': code_field and payload.get(code_field) or False,
                 'normalized_active': payload.get('Active') is not False}
+
+    def _migration_load_vals(self, staging):
+        """What the engine loads from one staged record (BW plan §2.1, the master data), in the company of the project
+        and archived when it is inactive in QuickBooks. A record that maps to one already in Odoo is linked to it with
+        no values, so loading never changes it; None leaves it out: a tax code is only mapped, never a tax, and the open
+        invoices, the bills and the Trial Balance are step 4b-2b. A UserError tells the user what to map."""
+        loader = {'account': self._qb_load_account, 'term': self._qb_load_term, 'class': self._qb_load_dimension,
+                  'location': self._qb_load_dimension, 'customer': self._qb_load_partner,
+                  'vendor': self._qb_load_partner, 'item': self._qb_load_item}.get(staging.object_type)
+        return loader(staging, staging.raw_payload or {}) if loader else None
+
+    def _qb_existing(self, staging, record):
+        """The source record is this record of Odoo: linked to it (the engine then updates nothing, and an item or the
+        opening of step 4b-2b finds it), with no values."""
+        key = {'project_id': staging.project_id.id, 'object_type': staging.object_type, 'source_id': staging.source_id}
+        Link = self.env['migration.record.link']
+        if not Link.search_count([(name, '=', value) for name, value in key.items()]):
+            Link.create(dict(key, res_model=record._name, res_id=record.id))
+        return record._name, {}
+
+    def _qb_linked(self, project, object_type, source_id):
+        """The record of Odoo already loaded from that QuickBooks record, or nothing."""
+        link = source_id and self.env['migration.record.link'].search([
+            ('project_id', '=', project.id), ('object_type', '=', object_type), ('source_id', '=', str(source_id))],
+            limit=1)
+        return link and self.env[link.res_model].browse(link.res_id).exists()
+
+    def _qb_load_account(self, staging, row):
+        """Mapped to the chart of the company: the mapping set of the project (an Account Type value whose source is
+        the Id, number or name of the account and whose target is an account or its code), else the account number.
+        Created only when the user gave a code no account has yet: that is how the mapping marks a new account."""
+        company = staging.project_id.company_id
+        Account = self.env['account.account'].with_company(company)
+        in_company = Account._check_company_domain(company)
+        keys = [row[key] for key in ('Id', 'AcctNum', 'Name', 'FullyQualifiedName') if row.get(key)]
+        mapped = self.env['migration.mapping.value'].search([
+            ('mapping_set_id', '=', staging.project_id.mapping_set_id.id), ('category', '=', 'account_type'),
+            ('target_model', '=', 'account.account'), ('source_value', 'in', keys)], limit=1)
+        if mapped.target_record_id:
+            account = Account.search([*in_company, ('id', '=', mapped.target_record_id)])
+            if not account:
+                raise UserError(_('The mapping points to an account that is not in the chart of %s.', company.name))
+            return self._qb_existing(staging, account)
+        code = mapped.target_code or row.get('AcctNum')
+        account = code and Account.search([*in_company, ('code', '=', code)], limit=1)
+        if account:
+            return self._qb_existing(staging, account)
+        if not mapped.target_code:
+            raise UserError(_('No account of %(company)s has the number of %(account)s: map it in the mapping set of '
+                              'the project to an account, or to the code of a new one.', company=company.name,
+                              account=staging.normalized_name))
+        account_type = (QBO_ACCOUNT_SUBTYPES.get(row.get('AccountSubType'))
+                        or QBO_ACCOUNT_TYPES.get(row.get('AccountType')))
+        if not account_type:
+            raise UserError(_('QuickBooks account type %s is unknown.', row.get('AccountType')))
+        return 'account.account', {'name': staging.normalized_name, 'code': mapped.target_code,
+                                   'account_type': account_type, 'company_ids': [Command.set(company.ids)],
+                                   'active': staging.normalized_active}
+
+    def _qb_load_term(self, staging, row):
+        """A term with DueDays is one line of Odoo, with its early payment discount (DiscountPercent within
+        DiscountDays). A date-driven one (DayOfMonthDue, DueNextMonthDays: Finance.xsd, SalesTerm) has a cut-off no
+        line of Odoo has, so it is said instead of loaded wrong."""
+        if row.get('DueDays') is None:
+            raise UserError(_('A date-driven term (due on a day of the month, next month after a cut-off) has no '
+                              'payment term in Odoo that says the same: create it by hand.'))
+        discount = bool(row.get('DiscountPercent') and row.get('DiscountDays'))
+        vals = {'name': staging.normalized_name, 'company_id': staging.project_id.company_id.id,
+                'active': staging.normalized_active, 'early_discount': discount,
+                'line_ids': [Command.clear(), Command.create({'value': 'percent', 'value_amount': 100.0,
+                                                              'delay_type': 'days_after', 'nb_days': row['DueDays']})]}
+        if discount:
+            vals.update(discount_percentage=row['DiscountPercent'], discount_days=row['DiscountDays'])
+        return 'account.payment.term', vals
+
+    def _qb_load_dimension(self, staging, row):
+        """A class or a department, by the dimension mapping of the project, else the default map of this module: an
+        analytic account of Odoo, the plan to create it in, or Do Not Migrate. Unmapped, it is said, not guessed."""
+        keys = [row[key] for key in ('Id', 'Name', 'FullyQualifiedName') if row.get(key)]
+        dimension = self.env['migration.dimension.map'].search([
+            ('mapping_set_id', '=', staging.project_id.mapping_set_id.id), ('object_type', '=', staging.object_type),
+            ('source_value', 'in', keys)], limit=1) or self.env['qb.dimension.default.map'].search([
+                ('dimension_type', '=', staging.object_type), ('source_value', 'in', keys)], limit=1)
+        if dimension.do_not_migrate:
+            return None
+        if dimension.analytic_account_id:
+            return self._qb_existing(staging, dimension.analytic_account_id)
+        if not dimension.analytic_plan_id:
+            raise UserError(_('Map %s to an analytic plan or account in the dimension mapping, or mark it Do Not '
+                              'Migrate.', staging.normalized_name))
+        return 'account.analytic.account', {'name': staging.normalized_name, 'plan_id': dimension.analytic_plan_id.id,
+                                            'company_id': staging.project_id.company_id.id,
+                                            'active': staging.normalized_active}
+
+    def _qb_load_partner(self, staging, row):
+        """A customer or a vendor is a partner of its own: Intuit keeps DisplayName unique across customers and
+        vendors, so one that is both is two QuickBooks records, and they are not merged by guess."""
+        customer = staging.object_type == 'customer'
+        address = row.get('BillAddr') or {}
+        Country = self.env['res.country']
+        country_key = address.get('CountryCode') or address.get('Country')
+        country = country_key and (Country.search([('code', '=ilike', country_key)], limit=1)
+                                   or Country.search([('name', '=ilike', country_key)], limit=1))
+        state = country and address.get('CountrySubDivisionCode') and self.env['res.country.state'].search([
+            ('country_id', '=', country.id), ('code', '=ilike', address['CountrySubDivisionCode'])], limit=1)
+        tax_id = row.get('PrimaryTaxIdentifier' if customer else 'TaxIdentifier')
+        return 'res.partner', {
+            'name': staging.normalized_name, 'company_id': staging.project_id.company_id.id,
+            'active': staging.normalized_active, 'customer_rank' if customer else 'supplier_rank': 1,
+            'email': (row.get('PrimaryEmailAddr') or {}).get('Address') or False,
+            'phone': (row.get('PrimaryPhone') or {}).get('FreeFormNumber') or False,
+            'street': address.get('Line1') or False, 'street2': address.get('Line2') or False,
+            'city': address.get('City') or False, 'zip': address.get('PostalCode') or False,
+            'country_id': country.id if country else False, 'state_id': state.id if state else False,
+            # a tax id Intuit sends masked (XXXXXX6789) is no tax id
+            'vat': tax_id if tax_id and 'XXX' not in tax_id.upper() else False,
+        }
+
+    def _qb_load_item(self, staging, row):
+        """Inventory, non-inventory and service items are products (storable, goods, service), with their income and
+        expense accounts only when those accounts are already loaded."""
+        kind = QBO_ITEM_TYPES.get(row.get('Type'))
+        if not kind:
+            return None
+        vals = dict(kind, name=staging.normalized_name, default_code=row.get('Sku') or False,
+                    list_price=row.get('UnitPrice') or 0.0, standard_price=row.get('PurchaseCost') or 0.0,
+                    company_id=staging.project_id.company_id.id, active=staging.normalized_active)
+        for field, ref in (('property_account_income_id', 'IncomeAccountRef'),
+                           ('property_account_expense_id', 'ExpenseAccountRef')):
+            account = self._qb_linked(staging.project_id, 'account', (row.get(ref) or {}).get('value'))
+            if account:
+                vals[field] = account.id
+        return 'product.template', vals
 
     def _encrypt_stored_secrets(self):
         """1.0.3 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
