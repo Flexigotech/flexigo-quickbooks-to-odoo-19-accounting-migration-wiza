@@ -11,6 +11,14 @@
   `-u flexigo_quickbooks_to_odoo_19_accounting_migration_wiza`); restarting without updating does not load it.
 - A copy of the database (neutralized) forgets the QuickBooks tokens; uninstalling deletes the Intuit apps kept in
   FlexigoTech Cloud. New connections default to QuickBooks API minor version 75.
+- Extraction into the migration staging, page by page through FlexigoTech Cloud, by the engine of the Migration Base
+  (Extract on a migration run): accounts, tax codes, terms, classes, departments, customers, vendors, items, open
+  invoices and open bills, and the Trial Balance to the day of the extraction. If FlexigoTech Cloud stops answering or
+  the service ends, the run pauses where it was and goes on by itself; the staging is never deleted. A connection made
+  before 1.1.0 says that extracting needs a new connection through FlexigoTech Cloud. The Intuit app and the sandbox of
+  a connection already saved in FlexigoTech Cloud no longer change (create a new connection instead).
+- The unused report client (it sent `as_of_date`, which QuickBooks Online reports do not take) and the query helper
+  that never ended are gone.
 
 ## 19.0.1.0.7 (2026-11-07)
 - App Store listing: the manifest no longer links to an external website (its description gave a web address for service enquiries; now the e-mail) and the page links only to the support e-mail and to FlexigoTech apps on Odoo Apps (Odoo Apps vendor guidelines). No functional change.

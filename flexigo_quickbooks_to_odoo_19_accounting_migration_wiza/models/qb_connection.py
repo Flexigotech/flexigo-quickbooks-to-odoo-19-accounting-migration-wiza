@@ -17,6 +17,24 @@ FGT_MODULE = 'flexigo_quickbooks_to_odoo_19_accounting_migration_wiza'
 FGT_PLATFORMS = ('quickbooks', 'quickbooks-test')
 INTUIT_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 QBO_HOSTS = {False: 'https://quickbooks.api.intuit.com', True: 'https://sandbox-quickbooks.api.intuit.com'}
+# BW step 4b: what the migration engine extracts, in load order (accounts before invoices). object_type of the staging:
+# (QuickBooks entity, WHERE of its query, field of the name, field of the code). Then the Trial Balance report, staged as
+# 'custom' (the staging has no type for a report). Intuit's query syntax and pages: developer.intuit.com/quickbooks-online/
+# docs/learn/explore-the-quickbooks-online-api/data-queries (MAXRESULTS is 1000 at most; STARTPOSITION starts at 1).
+QBO_ENTITIES = {
+    'account': ('Account', '', 'FullyQualifiedName', 'AcctNum'),
+    'taxcode': ('TaxCode', '', 'Name', None),
+    'term': ('Term', '', 'Name', None),
+    'class': ('Class', '', 'FullyQualifiedName', None),
+    'location': ('Department', '', 'FullyQualifiedName', None),
+    'customer': ('Customer', '', 'DisplayName', None),
+    'vendor': ('Vendor', '', 'DisplayName', None),
+    'item': ('Item', '', 'FullyQualifiedName', 'Sku'),
+    'invoice': ('Invoice', "Balance > '0'", 'CustomerRef', 'DocNumber'),   # open ones only
+    'bill': ('Bill', "Balance > '0'", 'VendorRef', 'DocNumber'),
+}
+TRIAL_BALANCE = 'custom'
+QBO_PAGE = 1000
 
 def _fernet(env):
     """FR-004: the Fernet keys are MIGRATION_ENCRYPTION_KEY when it is a valid key, and one derived from the database
@@ -187,6 +205,14 @@ class QbConnection(models.Model):
                               'FlexigoTech Cloud keeps going direct, and a new one goes through FlexigoTech Cloud.'))
         if any(vals.get(name) for name in self._SECRET_FIELDS) and any(c.fgt_route == 'cloud' for c in self):
             raise self._no_secret_here()
+        # the vault keeps the app under quickbooks@<id> or quickbooks-test@<id> with its tokens: another app or the
+        # other environment needs a new connection (kb_conector_pasarela_pausas §14: fgt_saved_at stays as it is)
+        if {'oauth_client_id', 'is_sandbox'} & vals.keys() and any(
+                c.fgt_route == 'cloud' and c.sudo().fgt_saved_at
+                and (vals.get('oauth_client_id', c.oauth_client_id) != c.oauth_client_id
+                    or bool(vals.get('is_sandbox', c.is_sandbox)) != c.is_sandbox) for c in self):
+            raise UserError(_('The Intuit app of this connection is saved in FlexigoTech Cloud: to use another app or '
+                              'the sandbox, create a new QuickBooks connection.'))
         return super().write(self._encrypt_secret_vals(vals))
 
     def unlink(self):
@@ -262,9 +288,65 @@ class QbConnection(models.Model):
         return QboApiClient(None, self.realm_id, self.minorversion, sandbox=self.is_sandbox,
                             concurrency_cap=self.concurrency_cap, max_retries=self.max_retries, send=self._qbo_send)
 
-    def _qbo_reports_client(self):
-        from ..lib.qbo_reports_client import QboReportsClient
-        return QboReportsClient(None, self.realm_id, self.minorversion, sandbox=self.is_sandbox, send=self._qbo_send)
+    # ---------- the migration engine (flexigo_migration_base, migration.run) ----------
+
+    def _qb_check_extract(self):
+        """BW plan §2.4: the extraction only goes through FlexigoTech Cloud. A connection bought before keeps what it
+        bought, and is told so before anything is called or queued."""
+        for connection in self:
+            if connection.fgt_route != 'cloud':
+                raise UserError(_('This QuickBooks connection was made before FlexigoTech Cloud: it keeps working as '
+                                  'bought (Connect to QuickBooks and Test Connection), but the extraction goes through '
+                                  'FlexigoTech Cloud. To extract, create a new QuickBooks connection, which goes '
+                                  'through FlexigoTech Cloud, and connect it with Intuit: it takes two minutes.'))
+            if not connection.realm_id:
+                raise UserError(_('Connect this QuickBooks connection with Intuit first (Connect to QuickBooks).'))
+
+    def _migration_object_types(self):
+        return [*QBO_ENTITIES, TRIAL_BALANCE]
+
+    def _migration_extract_page(self, object_type, cursor):
+        """One page for the engine: the query of the entity from STARTPOSITION cursor (1 the first time) until a page
+        comes short, or the Trial Balance to today. A refusal of FlexigoTech Cloud goes up as it is: the engine pauses."""
+        self.ensure_one()
+        self._qb_check_extract()
+        if object_type == TRIAL_BALANCE:
+            end_date = fields.Date.to_string(fields.Date.context_today(self))
+            return [self._qbo_get('reports/TrialBalance', {'end_date': end_date})], None
+        entity, where, _name, _code = QBO_ENTITIES[object_type]
+        start = cursor or 1
+        query = 'SELECT * FROM %s%s STARTPOSITION %d MAXRESULTS %d' % (
+            entity, where and ' WHERE ' + where, start, QBO_PAGE)
+        # Intuit leaves the entity out of QueryResponse when there are no rows
+        rows = self._qbo_get('query', {'query': query}).get('QueryResponse', {}).get(entity, [])
+        return rows, (start + QBO_PAGE if len(rows) == QBO_PAGE else None)
+
+    def _qbo_get(self, path, params):
+        """GET v3/company/<realm>/<path> with the minor version of the connection: Intuit's JSON, or UserError."""
+        response = self._qbo_send('GET', 'v3/company/%s/%s' % (self.realm_id, path),
+                                  params=dict(params, minorversion=self.minorversion or '75'))
+        if response.status_code != 200:
+            raise UserError(_('QuickBooks Online answered HTTP %(status)s to %(path)s.', status=response.status_code,
+                              path=path))
+        data = response.json()
+        fault = data.get('Fault') or (data.get('QueryResponse') or {}).get('Fault')
+        if fault:   # an error page is no empty page: it must not end the extraction of the entity
+            raise UserError(_('QuickBooks Online refused %(path)s: %(fault)s', path=path, fault=json.dumps(fault)[:300]))
+        return data
+
+    def _migration_normalize(self, object_type, payload):
+        """Staging values of one payload: its Id and realm, and the name, code and active flag of BW plan §2.6."""
+        if object_type == TRIAL_BALANCE:
+            return {'source_id': 'TrialBalance', 'source_realm': self.realm_id, 'normalized_name': 'TrialBalance',
+                    'normalized_code': (payload.get('Header') or {}).get('EndPeriod') or False,
+                    'normalized_active': True}
+        _entity, _where, name_field, code_field = QBO_ENTITIES[object_type]
+        name = payload.get(name_field) or payload.get('Name')
+        if isinstance(name, dict):   # the CustomerRef or VendorRef of an invoice or a bill
+            name = name.get('name')
+        return {'source_id': payload['Id'], 'source_realm': self.realm_id, 'normalized_name': name or False,
+                'normalized_code': code_field and payload.get(code_field) or False,
+                'normalized_active': payload.get('Active') is not False}
 
     def _encrypt_stored_secrets(self):
         """1.0.3 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
@@ -424,3 +506,14 @@ class QbConnection(models.Model):
                 raise UserError(_("Token refresh failed: HTTP %s") % response.status_code)
         except Exception as e:
             raise UserError(_("Token refresh error: %s") % str(e)[:100])
+
+
+class MigrationRun(models.Model):
+    _inherit = 'migration.run'
+
+    def _check_engine_runs(self, run_type):
+        """Extract on a QuickBooks connection that cannot extract says why, before the guard and before queueing."""
+        super()._check_engine_runs(run_type)
+        if run_type == 'extract':
+            for run in self.filtered(lambda r: r.source_ref._name == 'qb.connection'):
+                run.source_ref._qb_check_extract()
