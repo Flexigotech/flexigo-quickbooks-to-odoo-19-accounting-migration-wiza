@@ -145,7 +145,7 @@ class TestQbLoad(RelayStandIn, TransactionCase):
                                                          ('object_type', '=', object_type),
                                                          ('source_id', '=', source_id)])
         return link and self.env[link.res_model].with_company(self.company).with_context(
-            active_test=False).browse(link.res_id)
+            active_test=False).browse(link.res_id).exists()
 
     def _links(self):
         return self.env['migration.record.link'].search_count([('project_id', '=', self.project.id)])
