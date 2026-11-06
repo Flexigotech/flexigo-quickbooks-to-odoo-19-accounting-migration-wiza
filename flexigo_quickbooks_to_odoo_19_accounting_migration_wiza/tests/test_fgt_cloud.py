@@ -240,6 +240,7 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
         cloud.sudo().write({'fgt_saved_at': fields.Datetime.now(), 'fgt_connected_on': fields.Datetime.now()})
         queries = list(get_neutralization_queries([MODULE]))
         self.assertTrue(queries)
+        self.env.flush_all()   # the SQL runs on what is in the database, as on a real copy
         for query in queries:
             self.env.cr.execute(query)
         self.env.invalidate_all()
