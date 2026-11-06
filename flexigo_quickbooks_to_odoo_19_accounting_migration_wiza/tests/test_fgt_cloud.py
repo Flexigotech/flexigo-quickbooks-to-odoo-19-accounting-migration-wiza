@@ -158,7 +158,7 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
         self.relay.assert_not_called()
 
     def test_05_a_cloud_connection_only_calls_the_relay(self):
-        connection = self._new()
+        connection = self._new(fgt_consent=True)
         platform = 'quickbooks@%d' % connection.id
         with patch('requests.get') as get, patch('requests.post') as post, \
                 patch('requests.Session.request') as session:
@@ -269,6 +269,17 @@ class TestQbFgtCloud(RelayStandIn, TransactionCase):
         self.assertTrue(any(getattr(c.args[0], 'func', None) is hooks._forget_after_uninstall
                             for c in after_commit.call_args_list))
         self.delete.assert_not_called()
+
+    def test_11_withdrawing_the_consent_stops_every_call(self):
+        connection = self._new(fgt_consent=True, fgt_client_secret='the-secret')
+        connection.fgt_consent = False
+        with patch('requests.get') as get, patch('requests.post') as post:
+            for action in (connection.action_test_connection, connection.action_connect_qbo,
+                           lambda: connection._qbo_api_client().get_company_info()):
+                with self.subTest(action=action), self.assertRaises(UserError):
+                    action()
+        for mock in (get, post, self.relay):
+            mock.assert_not_called()
 
     def test_10_only_an_administrator_deletes_a_bought_connection(self):
         manager = new_test_user(self.env, login='qb-cloud-unlink', groups='base.group_user,' + MGR)
