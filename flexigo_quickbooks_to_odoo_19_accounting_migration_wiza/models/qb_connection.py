@@ -223,6 +223,7 @@ class QbConnection(models.Model):
             cloud._relay_store_credential(FGT_MODULE, connection._fgt_platform(), {
                 'client_id': connection.oauth_client_id, 'client_secret': connection.fgt_client_secret})
             connection.sudo().fgt_saved_at = fields.Datetime.now()
+        self.invalidate_recordset(['fgt_client_secret'])   # not even the cache of this request keeps it
 
     def _qbo_send(self, method, path, **kwargs):
         """The one way to Intuit (BW plan §2.6): the API (path 'v3/company/<realm>/...', relative to the QuickBooks
