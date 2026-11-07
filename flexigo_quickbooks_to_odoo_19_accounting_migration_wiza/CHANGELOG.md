@@ -28,7 +28,8 @@
   analytic accounts in the plan of the dimension mapping. A tax code is never created as a tax; date-driven terms
   and unmapped accounts, classes and departments are listed in the run instead of being guessed.
 - The Trial Balance becomes ONE posted opening entry at its end date, in the first general journal of the company
-  (the one Odoo's own opening entry takes): one line per account with its balance, and the receivable and payable
+  (the one Odoo's own opening entry takes): one line per account with its balance (accounts grouped in sections of
+  the report included; section totals are not counted), and the receivable and payable
   accounts one line per open invoice or bill (customer or vendor, its number as label, due date and open balance, in
   its own currency when it has another), so you match them with payments in Odoo; no invoice or bill is created, so
   no tax or income is counted twice. A Trial Balance that does not balance creates nothing, and loading again
