@@ -79,6 +79,7 @@ class TestQbOpening(RelayStandIn, TransactionCase):
             ],
             'Bill': [{'Id': '150', 'DocNumber': 'B-77', 'VendorRef': _ref('56', "Bob's Burger Joint"),
                       'DueDate': '2026-11-20', 'Balance': 108.09}],
+            'CreditMemo': [], 'VendorCredit': [],   # test_08
         }
         # debit 1000 + 420 + 200 = credit 108.09 + 911.91 + 600 = 1620
         self.trial_balance = [_row('33', 'Checking', '1000.00'), _row('84', 'Accounts Receivable (A/R)', '420.00'),
@@ -201,3 +202,47 @@ class TestQbOpening(RelayStandIn, TransactionCase):
         self._to_loaded()
         with self.assertRaises(UserError):
             self.project.status = 'reconciled'
+
+    def test_08_unapplied_credit_notes_are_open_items_with_the_opposite_sign(self):
+        """What is left of a credit memo (RemainingCredit) is a credit on the receivables and of a vendor credit
+        (Balance) a debit on the payables (Finance.xsd). In another currency they are at their ExchangeRate: neither has
+        a home amount of what is left. One fully applied gives no line."""
+        self.intuit['CreditMemo'] = [
+            {'Id': '160', 'DocNumber': 'CM-9', 'CustomerRef': _ref('1', "Amy's Bird Sanctuary"),
+             'CurrencyRef': _ref('USD', 'United States Dollar'), 'TotalAmt': 80.0, 'Balance': 50.0,
+             'RemainingCredit': 50.0},
+            {'Id': '161', 'DocNumber': 'CM-10', 'CustomerRef': _ref('2', 'Jardins de Lyon'),
+             'CurrencyRef': _ref('EUR', 'Euro'), 'ExchangeRate': 1.2, 'TotalAmt': 10.0, 'RemainingCredit': 10.0}]
+        self.intuit['VendorCredit'] = [
+            {'Id': '170', 'DocNumber': 'VC-3', 'VendorRef': _ref('56', "Bob's Burger Joint"), 'TotalAmt': 8.09,
+             'Balance': 8.09},
+            {'Id': '171', 'DocNumber': 'VC-4', 'VendorRef': _ref('56', "Bob's Burger Joint"), 'TotalAmt': 5.0,
+             'Balance': 0}]
+        # A/R 420 - 50 - 12 = 358, A/P 108.09 - 8.09 = 100: debit 1000 + 358 + 200 = credit 100 + 858 + 600 = 1558
+        self.trial_balance[1] = _row('84', 'Accounts Receivable (A/R)', '358.00')
+        self.trial_balance[3] = _row('91', 'Accounts Payable (A/P)', credit='100.00')
+        self.trial_balance[4] = _row('92', 'Retained Earnings', credit='858.00')
+        load = self._load()
+        move = self._loaded('custom', 'TrialBalance')
+        self.assertEqual(move.state, 'posted', load.error_messages)
+        self.assertEqual(self.usd.compare_amounts(sum(move.line_ids.mapped('debit')),
+                                                  sum(move.line_ids.mapped('credit'))), 0)
+        amy, lyon, bob = self._loaded('customer', '1'), self._loaded('customer', '2'), self._loaded('vendor', '56')
+        self.assertEqual(sorted((line.name, line.partner_id.id, line.currency_id.name, line.amount_currency,
+                                 line.balance) for line in self._lines('QB1200')),
+                         [('1037', amy.id, 'USD', 300.0, 300.0), ('1038', lyon.id, 'EUR', 100.0, 120.0),
+                          ('CM-10', lyon.id, 'EUR', -10.0, -12.0), ('CM-9', amy.id, 'USD', -50.0, -50.0)])
+        self.assertEqual(sorted((line.name, line.partner_id.id, line.balance) for line in self._lines('QB2000')),
+                         [('B-77', bob.id, -108.09), ('VC-3', bob.id, 8.09)])
+        # the open items cover the receivables and payables of QuickBooks: nothing is left without a partner
+        self.assertEqual(self._tie_out('ar_aging', 'QB1200'), (358.0, 358.0, False))
+        self.assertEqual(self._tie_out('ap_aging', 'QB2000'), (-100.0, -100.0, False))
+        self.assertFalse(self.project.reconciliation_line_ids.filtered('is_blocking'))
+        self._to_loaded()
+        self.project.status = 'reconciled'
+        self.assertEqual(self.project.status, 'reconciled')
+        staged = self.env['migration.staging.record'].search([
+            ('project_id', '=', self.project.id), ('object_type', 'in', ('creditmemo', 'vendorcredit'))])
+        self.assertEqual(sorted(staged.mapped('source_id')), ['160', '161', '170', '171'])
+        for staging in staged:
+            self.assertIsNone(self.connection._migration_load_vals(staging))   # no credit note is created
