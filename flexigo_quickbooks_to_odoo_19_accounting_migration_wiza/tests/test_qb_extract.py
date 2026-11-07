@@ -2,10 +2,10 @@
 """19.0.1.1.0, BW step 4b-1: QuickBooks Online extracted into the staging by the migration engine of
 flexigo_migration_base (migration.run, the real one). Only a connection through FlexigoTech Cloud extracts: each page is
 one _relay_request (quickbooks@<id>, quickbooks-test@<id> for the sandbox) to Intuit's query endpoint, STARTPOSITION
-from 1 and MAXRESULTS 1000 until a short page, open invoices and bills only, and then the Trial Balance to an end_date.
-A connection bought before FlexigoTech Cloud ('direct') keeps what it bought and does not extract. A refusal of
-FlexigoTech Cloud pauses the run where it was. The relay is stood in for as in test_fgt_cloud: nothing reaches it or
-Intuit."""
+from 1 and MAXRESULTS 1000 until a short page, open invoices and bills only (and every credit memo and vendor credit:
+the open ones cannot be asked for), and then the Trial Balance to an end_date. A connection bought before FlexigoTech
+Cloud ('direct') keeps what it bought and does not extract. A refusal of FlexigoTech Cloud pauses the run where it was.
+The relay is stood in for as in test_fgt_cloud: nothing reaches it or Intuit."""
 import json
 import re
 from collections import Counter
@@ -21,7 +21,8 @@ from odoo.addons.flexigotech_cloud.exceptions import FlexigotechRelayError, Flex
 from .test_fgt_cloud import MODULE, RelayStandIn, _response
 
 QUERY = re.compile(r"SELECT \* FROM (\w+)(?: WHERE (.+))? STARTPOSITION (\d+) MAXRESULTS (\d+)")
-TYPES = ['account', 'taxcode', 'term', 'class', 'location', 'customer', 'vendor', 'item', 'invoice', 'bill', 'custom']
+TYPES = ['account', 'taxcode', 'term', 'class', 'location', 'customer', 'vendor', 'item', 'invoice', 'creditmemo',
+         'bill', 'vendorcredit', 'custom']
 QUERIES = [
     "SELECT * FROM Account STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM TaxCode STARTPOSITION 1 MAXRESULTS 1000",
@@ -33,10 +34,13 @@ QUERIES = [
     "SELECT * FROM Vendor STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM Item STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM Invoice WHERE Balance > '0' STARTPOSITION 1 MAXRESULTS 1000",
+    # every credit note: RemainingCredit is not filterable and VendorCredit.Balance only in QBW (Finance.xsd)
+    "SELECT * FROM CreditMemo STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM Bill WHERE Balance > '0' STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM VendorCredit STARTPOSITION 1 MAXRESULTS 1000",
 ]
 COUNTS = {'account': 1, 'taxcode': 1, 'class': 1, 'location': 1, 'customer': 1001, 'vendor': 1, 'item': 1, 'invoice': 1,
-          'bill': 1, 'custom': 1}
+          'creditmemo': 1, 'bill': 1, 'vendorcredit': 1, 'custom': 1}
 
 
 def _trial_balance(end_date):
@@ -82,7 +86,11 @@ class TestQbExtract(RelayStandIn, TransactionCase):
             'Item': [{'Id': '11', 'Name': 'Pump', 'FullyQualifiedName': 'Pump', 'Sku': 'P-11', 'Active': True}],
             'Invoice': [{'Id': '130', 'DocNumber': '1037', 'CustomerRef': {'value': '1', 'name': 'Customer 1'},
                          'Balance': 362.07}],
+            'CreditMemo': [{'Id': '160', 'DocNumber': '1040', 'CustomerRef': {'value': '1', 'name': 'Customer 1'},
+                            'RemainingCredit': 50.0}],
             'Bill': [{'Id': '150', 'VendorRef': {'value': '56', 'name': "Bob's Burger Joint"}, 'Balance': 108.09}],
+            'VendorCredit': [{'Id': '170', 'VendorRef': {'value': '56', 'name': "Bob's Burger Joint"},
+                              'Balance': 8.09}],
         }
 
     def _intuit(self, module, platform, method, path, **kwargs):
@@ -239,6 +247,11 @@ class TestQbExtract(RelayStandIn, TransactionCase):
                          'Balance': 362.07}, "Amy's Bird", '1037', True),
             'bill': ({'Id': '150', 'VendorRef': {'value': '56', 'name': "Bob's Burger Joint"}, 'Balance': 108.09},
                      "Bob's Burger Joint", False, True),
+            'creditmemo': ({'Id': '160', 'DocNumber': '1040', 'CustomerRef': {'value': '7', 'name': "Amy's Bird"},
+                            'RemainingCredit': 50.0}, "Amy's Bird", '1040', True),
+            'vendorcredit': ({'Id': '170', 'DocNumber': 'VC-3', 'Balance': 8.09,
+                              'VendorRef': {'value': '56', 'name': "Bob's Burger Joint"}}, "Bob's Burger Joint", 'VC-3',
+                             True),
         }
         for object_type, (payload, name, code, active) in cases.items():
             with self.subTest(object_type=object_type):

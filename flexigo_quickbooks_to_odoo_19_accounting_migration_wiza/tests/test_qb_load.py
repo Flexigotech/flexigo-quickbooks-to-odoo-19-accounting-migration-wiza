@@ -112,7 +112,10 @@ class TestQbLoad(RelayStandIn, TransactionCase):
             ],
             'Invoice': [{'Id': '130', 'DocNumber': '1037', 'CustomerRef': _ref('1', "Amy's Bird Sanctuary"),
                          'Balance': 362.07}],
+            'CreditMemo': [{'Id': '160', 'DocNumber': '1040', 'CustomerRef': _ref('1', "Amy's Bird Sanctuary"),
+                            'RemainingCredit': 50.0}],
             'Bill': [{'Id': '150', 'VendorRef': _ref('56', "Bob's Burger Joint"), 'Balance': 108.09}],
+            'VendorCredit': [{'Id': '170', 'VendorRef': _ref('56', "Bob's Burger Joint"), 'Balance': 8.09}],
         }
 
     def _intuit(self, module, platform, method, path, **kwargs):
@@ -197,8 +200,10 @@ class TestQbLoad(RelayStandIn, TransactionCase):
         self.assertEqual(Tax.search_count([]), before)
         staged = self.env['migration.staging.record'].search([('project_id', '=', self.project.id),
                                                               ('object_type', 'in', ('taxcode', 'invoice', 'bill',
+                                                                                     'creditmemo', 'vendorcredit',
                                                                                      'custom'))])
-        self.assertEqual(sorted(staged.mapped('object_type')), ['bill', 'custom', 'invoice', 'taxcode'])
+        self.assertEqual(sorted(staged.mapped('object_type')),
+                         ['bill', 'creditmemo', 'custom', 'invoice', 'taxcode', 'vendorcredit'])
         for staging in staged.filtered(lambda s: s.object_type != 'custom'):   # the Trial Balance: test_qb_opening
             self.assertIsNone(self.connection._migration_load_vals(staging), staging.object_type)
             self.assertFalse(self._loaded(staging.object_type, staging.source_id))
