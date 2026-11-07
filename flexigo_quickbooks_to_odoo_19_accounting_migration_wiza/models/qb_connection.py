@@ -31,7 +31,11 @@ QBO_ENTITIES = {
     'vendor': ('Vendor', '', 'DisplayName', None),
     'item': ('Item', '', 'FullyQualifiedName', 'Sku'),
     'invoice': ('Invoice', "Balance > '0'", 'CustomerRef', 'DocNumber'),   # open ones only
+    # every credit note: what is left of it cannot be asked for (RemainingCredit is not filterable, VendorCredit.Balance
+    # only in QBW: Finance.xsd); the opening skips the ones at 0
+    'creditmemo': ('CreditMemo', '', 'CustomerRef', 'DocNumber'),
     'bill': ('Bill', "Balance > '0'", 'VendorRef', 'DocNumber'),
+    'vendorcredit': ('VendorCredit', '', 'VendorRef', 'DocNumber'),
 }
 TRIAL_BALANCE = 'custom'
 QBO_PAGE = 1000
@@ -66,11 +70,15 @@ QBO_ITEM_TYPES = {
     'Service': {'type': 'service', 'is_storable': False},
 }
 # BW step 4b-2b, the open items of the opening entry, by staging type: (partner type, its reference, the reference of
-# its account, the Odoo type of that account, sign). Finance.xsd: Invoice and Bill (Balance, HomeBalance, DueDate,
-# ARAccountRef, APAccountRef). Credit notes are other entities (CreditMemo, VendorCredit), not extracted yet.
+# its account, the Odoo type of that account, sign, the field of what is left open, its field in the home currency).
+# Finance.xsd: Invoice and Bill (Balance, HomeBalance, DueDate, ARAccountRef, APAccountRef); 4b-2c, the credit notes
+# with the opposite sign: CreditMemo (RemainingCredit, of a SalesTransaction like Invoice) and VendorCredit (Balance,
+# of a PurchaseByVendor: no DueDate). Neither has a home amount of what is left: it goes at its ExchangeRate.
 QBO_OPEN_ITEMS = {
-    'invoice': ('customer', 'CustomerRef', 'ARAccountRef', 'asset_receivable', 1),
-    'bill': ('vendor', 'VendorRef', 'APAccountRef', 'liability_payable', -1),
+    'invoice': ('customer', 'CustomerRef', 'ARAccountRef', 'asset_receivable', 1, 'Balance', 'HomeBalance'),
+    'creditmemo': ('customer', 'CustomerRef', 'ARAccountRef', 'asset_receivable', -1, 'RemainingCredit', None),
+    'bill': ('vendor', 'VendorRef', 'APAccountRef', 'liability_payable', -1, 'Balance', 'HomeBalance'),
+    'vendorcredit': ('vendor', 'VendorRef', 'APAccountRef', 'liability_payable', 1, 'Balance', None),
 }
 QBO_AGING = {'asset_receivable': 'ar_aging', 'liability_payable': 'ap_aging'}
 RECONCILIATION_TOLERANCE = 0.01
@@ -391,7 +399,8 @@ class QbConnection(models.Model):
         """What the engine loads from one staged record (BW plan §2.1, the master data), in the company of the project
         and archived when it is inactive in QuickBooks. A record that maps to one already in Odoo is linked to it with
         no values, so loading never changes it; None leaves it out: a tax code is only mapped, never a tax, and the open
-        invoices and bills are lines of the opening entry the Trial Balance makes. A UserError tells the user what to map."""
+        invoices, bills and credit notes are lines of the opening entry the Trial Balance makes. A UserError tells the
+        user what to map."""
         loader = {'account': self._qb_load_account, 'term': self._qb_load_term, 'class': self._qb_load_dimension,
                   'location': self._qb_load_dimension, 'customer': self._qb_load_partner,
                   'vendor': self._qb_load_partner, 'item': self._qb_load_item,
@@ -564,10 +573,11 @@ class QbConnection(models.Model):
         return balances, fields.Date.to_date(header['EndPeriod'])
 
     def _qb_open_items(self, project, balances):
-        """{account id: [lines]} of the open invoices and bills staged: its partner by its link, DocNumber as label
-        (the ref of a line is its entry's in Odoo), DueDate, and its Balance; in another currency, Balance in it and
-        HomeBalance in the company's. The account is the one the item names, else the only receivable or payable one
-        of the Trial Balance. What cannot be placed is said, not guessed."""
+        """{account id: [lines]} of the open invoices, bills and credit notes staged: its partner by its link,
+        DocNumber as label (the ref of a line is its entry's in Odoo), DueDate, and what is left open (QBO_OPEN_ITEMS);
+        in another currency, that in it and its home field (HomeBalance) or, with none, at its ExchangeRate in the
+        company's. The account is the one the item names, else the only receivable or payable one of the Trial
+        Balance. What cannot be placed is said, not guessed."""
         company = project.company_id
         currency = company.currency_id
         in_balance = self.env['account.account'].with_company(company).browse(list(balances))
@@ -575,9 +585,11 @@ class QbConnection(models.Model):
         for staging in self.env['migration.staging.record'].search([
                 ('project_id', '=', project.id), ('object_type', 'in', list(QBO_OPEN_ITEMS)),
                 ('validation_status', '!=', 'invalid')], order='object_type, id'):
-            partner_type, partner_ref, account_ref, account_type, sign = QBO_OPEN_ITEMS[staging.object_type]
+            partner_type, partner_ref, account_ref, account_type, sign, open_field, home_field = \
+                QBO_OPEN_ITEMS[staging.object_type]
             row = staging.raw_payload or {}
-            if not row.get('Balance'):
+            amount = row.get(open_field)
+            if not amount:
                 continue
             label = row.get('DocNumber') or '%s %s' % (QBO_ENTITIES[staging.object_type][0], staging.source_id)
             partner = self._qb_linked(project, partner_type, (row.get(partner_ref) or {}).get('value'))
@@ -586,19 +598,25 @@ class QbConnection(models.Model):
                 account = in_balance.filtered(lambda a: a.account_type == account_type)
             code = (row.get('CurrencyRef') or {}).get('value') or currency.name
             foreign = code != currency.name and self.env['res.currency'].search([('name', '=', code)], limit=1)
-            home = row.get('HomeBalance') if code != currency.name else row['Balance']
+            if code == currency.name:
+                home = amount
+            elif home_field:
+                home = row.get(home_field)
+            else:   # Finance.xsd: ExchangeRate = home currency units for one unit of the CurrencyRef
+                home = float(amount) * float(row['ExchangeRate']) if row.get('ExchangeRate') else None
             if not partner or len(account) != 1 or code != currency.name and not (foreign and home is not None):
                 problems.append(label)
                 continue
             line = {'account_id': account.id, 'partner_id': partner.id, 'name': label,
                     'date_maturity': row.get('DueDate') or False, 'balance': currency.round(sign * float(home))}
             if foreign:
-                line.update(currency_id=foreign.id, amount_currency=foreign.round(sign * float(row['Balance'])))
+                line.update(currency_id=foreign.id, amount_currency=foreign.round(sign * float(amount)))
             items.setdefault(account.id, []).append(line)
         if problems:
-            raise UserError(_('These open invoices or bills cannot go into the opening entry (their customer or vendor '
-                              'is not loaded, the Trial Balance has no single receivable or payable account for them, '
-                              'or their currency is not active in Odoo or has no HomeBalance): %s.', ', '.join(problems)))
+            raise UserError(_('These open invoices, bills or credit notes cannot go into the opening entry (their '
+                              'customer or vendor is not loaded, the Trial Balance has no single receivable or payable '
+                              'account for them, or their currency is not active in Odoo or has no HomeBalance or '
+                              'ExchangeRate): %s.', ', '.join(problems)))
         return items
 
     def _qb_opening_move(self, project, balances, items, cutoff):
