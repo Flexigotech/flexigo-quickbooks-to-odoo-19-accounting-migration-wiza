@@ -38,6 +38,10 @@ QBO_ENTITIES = {
     'vendorcredit': ('VendorCredit', '', 'VendorRef', 'DocNumber'),
 }
 TRIAL_BALANCE = 'custom'
+# BW step 4b-2d: staged as 'custom' too, by its Header.ReportName (the reports of Intuit say it: QuickBooks-V3-DotNET-SDK,
+# Test/Intuit.Ipp.Test/SDKV3Test/Services/QBO/Reports.cs), the stock at the cut-off; and the location it comes from.
+INVENTORY_REPORT = 'InventoryValuationSummary'
+OPENING_STOCK = 'QuickBooks opening stock'
 QBO_PAGE = 1000
 # BW step 4b-2a, the type of an account the user creates: Intuit's AccountType (AccountTypeEnum, and the two
 # AccountSubType values Odoo has a type of its own for) → account_type of Odoo. Intuit's schema:
@@ -354,12 +358,16 @@ class QbConnection(models.Model):
 
     def _migration_extract_page(self, object_type, cursor):
         """One page for the engine: the query of the entity from STARTPOSITION cursor (1 the first time) until a page
-        comes short, or the Trial Balance to today. A refusal of FlexigoTech Cloud goes up as it is: the engine pauses."""
+        comes short, or the reports to today: the Trial Balance and, at the same date, the Inventory Valuation Summary.
+        A refusal of FlexigoTech Cloud goes up as it is: the engine pauses."""
         self.ensure_one()
         self._qb_check_extract()
         if object_type == TRIAL_BALANCE:
-            end_date = fields.Date.to_string(fields.Date.context_today(self))
-            return [self._qbo_get('reports/TrialBalance', {'end_date': end_date})], None
+            day = fields.Date.to_string(fields.Date.context_today(self))
+            # the date of each report has its own name: end_date, and report_date for the inventory (Reports.cs of
+            # QuickBooks-V3-DotNET-SDK l.202-206 and l.248-255; ReportService.cs l.219)
+            return [self._qbo_get('reports/TrialBalance', {'end_date': day}),
+                    self._qbo_get('reports/' + INVENTORY_REPORT, {'report_date': day})], None
         entity, where, _name, _code = QBO_ENTITIES[object_type]
         start = cursor or 1
         query = 'SELECT * FROM %s%s STARTPOSITION %d MAXRESULTS %d' % (
@@ -384,9 +392,10 @@ class QbConnection(models.Model):
     def _migration_normalize(self, object_type, payload):
         """Staging values of one payload: its Id and realm, and the name, code and active flag of BW plan §2.6."""
         if object_type == TRIAL_BALANCE:
-            return {'source_id': 'TrialBalance', 'source_realm': self.realm_id, 'normalized_name': 'TrialBalance',
-                    'normalized_code': (payload.get('Header') or {}).get('EndPeriod') or False,
-                    'normalized_active': True}
+            header = payload.get('Header') or {}
+            report = header.get('ReportName') or 'TrialBalance'
+            return {'source_id': report, 'source_realm': self.realm_id, 'normalized_name': report,
+                    'normalized_code': header.get('EndPeriod') or False, 'normalized_active': True}
         _entity, _where, name_field, code_field = QBO_ENTITIES[object_type]
         name = payload.get(name_field) or payload.get('Name')
         if isinstance(name, dict):   # the CustomerRef or VendorRef of an invoice or a bill
@@ -399,8 +408,10 @@ class QbConnection(models.Model):
         """What the engine loads from one staged record (BW plan §2.1, the master data), in the company of the project
         and archived when it is inactive in QuickBooks. A record that maps to one already in Odoo is linked to it with
         no values, so loading never changes it; None leaves it out: a tax code is only mapped, never a tax, and the open
-        invoices, bills and credit notes are lines of the opening entry the Trial Balance makes. A UserError tells the
-        user what to map."""
+        invoices, bills and credit notes are lines of the opening entry the Trial Balance makes. The other report is the
+        stock at the cut-off. A UserError tells the user what to map."""
+        if staging.object_type == TRIAL_BALANCE and staging.source_id == INVENTORY_REPORT:
+            return self._qb_load_stock(staging, staging.raw_payload or {})
         loader = {'account': self._qb_load_account, 'term': self._qb_load_term, 'class': self._qb_load_dimension,
                   'location': self._qb_load_dimension, 'customer': self._qb_load_partner,
                   'vendor': self._qb_load_partner, 'item': self._qb_load_item,
@@ -523,6 +534,10 @@ class QbConnection(models.Model):
         vals = dict(kind, name=staging.normalized_name, default_code=row.get('Sku') or False,
                     list_price=row.get('UnitPrice') or 0.0, standard_price=row.get('PurchaseCost') or 0.0,
                     company_id=staging.project_id.company_id.id, active=staging.normalized_active)
+        if kind['is_storable'] and self._qb_linked(staging.project_id, 'item', staging.source_id):
+            # its cost values its stock (quantity × cost) since the stock load set QuickBooks' at the cut-off: loading
+            # the items again does not revalue it
+            del vals['standard_price']
         for field, ref in (('property_account_income_id', 'IncomeAccountRef'),
                            ('property_account_expense_id', 'ExpenseAccountRef')):
             account = self._qb_linked(staging.project_id, 'account', (row.get(ref) or {}).get('value'))
@@ -658,21 +673,115 @@ class QbConnection(models.Model):
         odoo = {account.id: total for account, total in Line._read_group(domain, ['account_id'], ['balance:sum'])}
         open_items = {account.id: total for account, total in Line._read_group(
             [*domain, ('partner_id', '!=', False)], ['account_id'], ['balance:sum'])}
-        Reconciliation = self.env['migration.reconciliation']
         for account in accounts:
             for kind, target in (('trial_balance', odoo), (QBO_AGING.get(account.account_type), open_items)):
-                if not kind:
-                    continue
-                key = {'project_id': project.id, 'reconciliation_type': kind, 'account_code': account.code}
-                vals = {'account_name': account.name, 'tolerance': RECONCILIATION_TOLERANCE,
-                        'source_amount': company.currency_id.round(balances.get(account.id, 0.0)),
-                        'target_amount': company.currency_id.round(target.get(account.id, 0.0)),
-                        'reconciliation_date': fields.Datetime.now()}
-                line = Reconciliation.search([(name, '=', value) for name, value in key.items()], limit=1)
-                if line:
-                    line.write(vals)
-                else:
-                    Reconciliation.create(dict(key, **vals))
+                if kind:
+                    self._qb_tie_out(project, kind, account.code, account.name, balances.get(account.id, 0.0),
+                                     target.get(account.id, 0.0))
+
+    def _qb_tie_out(self, project, kind, code, name, source, target):
+        """One line of migration.reconciliation, made or updated by project, type and code, with a tolerance of 0.01."""
+        currency = project.company_id.currency_id
+        key = {'project_id': project.id, 'reconciliation_type': kind, 'account_code': code}
+        vals = {'account_name': name, 'tolerance': RECONCILIATION_TOLERANCE, 'source_amount': currency.round(source),
+                'target_amount': currency.round(target), 'reconciliation_date': fields.Datetime.now()}
+        Reconciliation = self.env['migration.reconciliation']
+        line = Reconciliation.search([(field, '=', value) for field, value in key.items()], limit=1)
+        if line:
+            line.write(vals)
+        else:
+            Reconciliation.create(dict(key, **vals))
+
+    def _qb_load_stock(self, staging, report):
+        """BW plan §2.1, the stock at the cut-off: the quantity and asset value of each inventory item in Intuit's
+        Inventory Valuation Summary go into the main warehouse of the company, once (its link), with no stock valuation
+        entry; and every time it is loaded Odoo's value is reconciled with QuickBooks', item by item. No stock, nothing."""
+        project = staging.project_id
+        stock, cutoff = self._qb_inventory(project, report)
+        if not stock:
+            return None
+        if not self.env['migration.record.link'].search_count([
+                ('project_id', '=', project.id), ('object_type', '=', staging.object_type),
+                ('source_id', '=', staging.source_id)]):
+            self._qb_existing(staging, self._qb_stock_moves(project.company_id, stock, cutoff))
+        for product, (_quantity, value) in stock.items():
+            self._qb_tie_out(project, 'inventory', product.default_code or product.name, product.name, value,
+                             product.total_value)
+        return 'stock.location', {}
+
+    def _qb_inventory(self, project, report):
+        """{product: (quantity, value)} of Intuit's Inventory Valuation Summary, its rows by the link of their item
+        (in sections too: Report.xsd), and its date, else the one of the Trial Balance asked with it. In the home
+        currency, which must be the company's. An item that is not a loaded storable product, or below zero, is said
+        and nothing is loaded."""
+        company = project.company_id
+        header = report.get('Header') or {}
+        if header.get('Currency', company.currency_id.name) != company.currency_id.name:
+            raise UserError(_('The Inventory Valuation Summary of QuickBooks is in %(source)s and %(company)s works in '
+                              '%(target)s.', source=header['Currency'], company=company.name,
+                              target=company.currency_id.name))
+        titles = [column.get('ColTitle') for column in (report.get('Columns') or {}).get('Column', [])]
+        if not {'Qty', 'Asset Value'} <= set(titles):
+            raise UserError(_('The Inventory Valuation Summary of QuickBooks has no Qty and Asset Value columns.'))
+        quantity_at, value_at = titles.index('Qty'), titles.index('Asset Value')
+        stock, problems = {}, []
+        rows = list((report.get('Rows') or {}).get('Row', []))
+        for row in rows:   # the rows of a section are added to the list being walked
+            rows += (row.get('Rows') or {}).get('Row', [])
+            cells = row.get('ColData') or []
+            if not cells or not cells[0].get('id'):
+                continue   # a section, its summary or the TOTAL
+            quantity, value = (float(cells[at].get('value') or 0) for at in (quantity_at, value_at))
+            if not quantity and not value:
+                continue
+            template = self._qb_linked(project, 'item', cells[0]['id'])
+            if not template or not template.is_storable or not template.product_variant_id or quantity <= 0:
+                problems.append(cells[0].get('value') or cells[0]['id'])
+            else:
+                stock[template.product_variant_id.with_company(company)] = (quantity, value)
+        if problems:
+            raise UserError(_('These items of the Inventory Valuation Summary are not loaded as storable products, or '
+                              'their quantity is below zero, so no stock is loaded: %s. Load them, or fix their '
+                              'quantity in QuickBooks, and load again.', ', '.join(problems)))
+        if not stock:
+            return stock, None
+        cutoff = header.get('EndPeriod') or self.env['migration.staging.record'].search([
+            ('project_id', '=', project.id), ('object_type', '=', TRIAL_BALANCE), ('source_id', '=', 'TrialBalance')],
+            limit=1).normalized_code
+        if not cutoff:
+            raise UserError(_('The Inventory Valuation Summary of QuickBooks has no date.'))
+        return stock, cutoff
+
+    def _qb_stock_moves(self, company, stock, cutoff):
+        """The stock into the main warehouse of the company at the end of the cut-off day, from a location of its own
+        with no valuation account: Odoo 19 posts a stock move only in perpetual valuation and with a valuation account at
+        one of its ends (stock_account stock_move.py _should_create_account_move), and its closing posts the stock value
+        minus the inventory account (res_company.py _get_stock_valuation_account_vals), which match because the opening
+        entry brought that account. Each product is valued at QuickBooks' asset value: its cost is the value over the
+        quantity (what standard and average cost value the stock at) and its move has that value (product.value)."""
+        warehouse = self.env['stock.warehouse'].search([('company_id', '=', company.id)], limit=1)
+        if not warehouse:
+            raise UserError(_('%s has no warehouse to put the stock of QuickBooks in.', company.name))
+        Location = self.env['stock.location'].with_company(company)
+        source = Location.search([('name', '=', OPENING_STOCK), ('usage', '=', 'inventory'),
+                                  ('company_id', '=', company.id), ('valuation_account_id', '=', False)], limit=1) \
+            or Location.create({'name': OPENING_STOCK, 'usage': 'inventory', 'company_id': company.id})
+        moment = company._to_datetime_upper_bound(cutoff).replace(microsecond=0)
+        for product, (quantity, value) in stock.items():
+            product.with_context(valuation_date=moment).standard_price = value / quantity
+        moves = self.env['stock.move'].with_company(company).create([{
+            'product_id': product.id, 'product_uom': product.uom_id.id, 'product_uom_qty': quantity,
+            'location_id': source.id, 'location_dest_id': warehouse.lot_stock_id.id, 'company_id': company.id,
+            'origin': _('QuickBooks stock at %s', cutoff)} for product, (quantity, _value) in stock.items()])
+        moves = moves._action_confirm()
+        moves._action_assign()
+        moves.picked = True
+        moves = moves._action_done()
+        self.env['product.value'].create([{
+            'move_id': move.id, 'value': stock[move.product_id][1], 'company_id': company.id, 'date': moment,
+            'description': _('QuickBooks asset value at %s', cutoff)} for move in moves])
+        moves.write({'date': moment})   # and their lines: stock_move.py write
+        return source
 
     def _encrypt_stored_secrets(self):
         """1.0.3 upgrade: encrypt what older versions stored in plain text (a token of the key is left alone)."""
