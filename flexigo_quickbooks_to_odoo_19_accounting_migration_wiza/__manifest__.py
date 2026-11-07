@@ -14,7 +14,7 @@
     'website': 'https://flexigotech.com',
     'support': 'comercial@flexigotech.com',
     'name': 'QuickBooks to Odoo Migration Wizard',
-    'version': '17.0.1.0.3',
+    'version': '17.0.1.0.4',
     'category': 'Accounting/Data Migration',
     'license': 'OPL-1',
     'price': 49,

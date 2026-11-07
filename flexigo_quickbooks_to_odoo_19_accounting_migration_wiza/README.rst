@@ -143,6 +143,7 @@ Security
 **Access Control:**
 
 - Migration Manager group: Full CRUD on all migration resources
+- Other internal users: read only on the QuickBooks catalogue, staging rows, mappings and Class/Location maps
 - Migration Reviewer group: Read on projects/results, sign-off on reconciliation
 - Record rules enforce company isolation
 

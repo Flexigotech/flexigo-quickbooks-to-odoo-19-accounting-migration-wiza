@@ -1,5 +1,10 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 17.0.1.0.4 (2026-11-07)
+- Only a Migration Manager creates, edits and deletes the QuickBooks object catalogue, staging rows, value
+  mappings and Class/Location maps; every other internal user reads them. Before, any internal user could
+  change or delete them, while the connection was already for Migration Managers only.
+
 ## 17.0.1.0.3 (2026-11-05)
 - Each QuickBooks connection and staging row stays in its company: a Migration Manager of another company no longer
   sees a connection, starts its authorization or writes its company and tokens (there were no company rules).
