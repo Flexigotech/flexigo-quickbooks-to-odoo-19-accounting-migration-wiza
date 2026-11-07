@@ -12,7 +12,7 @@ from odoo import Command
 from odoo.tests import TransactionCase, tagged
 
 from .test_fgt_cloud import RelayStandIn, _response
-from .test_qb_extract import QUERY, _trial_balance
+from .test_qb_extract import QUERY, _inventory_valuation, _trial_balance
 
 
 def _ref(value, name):
@@ -123,6 +123,8 @@ class TestQbLoad(RelayStandIn, TransactionCase):
         params = kwargs['params']
         if path == 'v3/company/9130/reports/TrialBalance':
             return _response(200, _trial_balance(params['end_date']))
+        if path == 'v3/company/9130/reports/InventoryValuationSummary':   # no stock: test_qb_stock
+            return _response(200, _inventory_valuation(params['report_date']))
         entity, _where, start, _size = QUERY.fullmatch(params['query']).groups()
         rows = self.intuit[entity] if start == '1' else []
         return _response(200, {'QueryResponse': {entity: rows} if rows else {}})
@@ -203,8 +205,13 @@ class TestQbLoad(RelayStandIn, TransactionCase):
                                                                                      'creditmemo', 'vendorcredit',
                                                                                      'custom'))])
         self.assertEqual(sorted(staged.mapped('object_type')),
-                         ['bill', 'creditmemo', 'custom', 'invoice', 'taxcode', 'vendorcredit'])
-        for staging in staged.filtered(lambda s: s.object_type != 'custom'):   # the Trial Balance: test_qb_opening
+                         ['bill', 'creditmemo', 'custom', 'custom', 'invoice', 'taxcode', 'vendorcredit'])
+        # the two reports: the Trial Balance (test_qb_opening) and an Inventory Valuation Summary with no stock, which
+        # loads nothing (test_qb_stock)
+        inventory = staged.filtered(lambda s: s.source_id == 'InventoryValuationSummary')
+        self.assertIsNone(self.connection._migration_load_vals(inventory))
+        self.assertFalse(self._loaded('custom', 'InventoryValuationSummary'))
+        for staging in staged.filtered(lambda s: s.object_type != 'custom'):
             self.assertIsNone(self.connection._migration_load_vals(staging), staging.object_type)
             self.assertFalse(self._loaded(staging.object_type, staging.source_id))
 

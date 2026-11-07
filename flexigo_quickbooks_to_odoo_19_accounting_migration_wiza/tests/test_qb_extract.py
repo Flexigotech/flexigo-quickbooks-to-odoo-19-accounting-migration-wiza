@@ -40,7 +40,7 @@ QUERIES = [
     "SELECT * FROM VendorCredit STARTPOSITION 1 MAXRESULTS 1000",
 ]
 COUNTS = {'account': 1, 'taxcode': 1, 'class': 1, 'location': 1, 'customer': 1001, 'vendor': 1, 'item': 1, 'invoice': 1,
-          'creditmemo': 1, 'bill': 1, 'vendorcredit': 1, 'custom': 1}
+          'creditmemo': 1, 'bill': 1, 'vendorcredit': 1, 'custom': 2}
 
 
 def _trial_balance(end_date):
@@ -49,6 +49,20 @@ def _trial_balance(end_date):
             'Columns': {'Column': [{'ColTitle': '', 'ColType': 'Account'}, {'ColTitle': 'Debit', 'ColType': 'Money'},
                                    {'ColTitle': 'Credit', 'ColType': 'Money'}]},
             'Rows': {'Row': [{'ColData': [{'value': 'Checking', 'id': '33'}, {'value': '1201.00'}, {'value': ''}]}]}}
+
+
+def _inventory_valuation(report_date, rows=()):
+    """The Inventory Valuation Summary at report_date in the shape of Intuit's reports (Report.xsd of the Java SDK:
+    Header with ReportName, Columns, Rows of ColData with value and id, nested in sections, and the TOTAL summary):
+    the item, SKU, Qty, Asset Value and Calc. Avg. The titles of the columns are not verified with a sandbox."""
+    total = {'Summary': {'ColData': [{'value': 'TOTAL'}, {'value': ''}, {'value': ''}, {'value': ''}, {'value': ''}]},
+             'type': 'Section', 'group': 'GrandTotal'}
+    return {'Header': {'ReportName': 'InventoryValuationSummary', 'EndPeriod': report_date, 'Currency': 'USD'},
+            'Columns': {'Column': [{'ColTitle': '', 'ColType': 'ProductsAndService'},
+                                   {'ColTitle': 'SKU', 'ColType': 'String'}, {'ColTitle': 'Qty', 'ColType': 'Number'},
+                                   {'ColTitle': 'Asset Value', 'ColType': 'Money'},
+                                   {'ColTitle': 'Calc. Avg', 'ColType': 'Money'}]},
+            'Rows': {'Row': [*rows, total]}}
 
 
 def _refusal(code):
@@ -100,6 +114,8 @@ class TestQbExtract(RelayStandIn, TransactionCase):
         params = kwargs['params']
         if path == 'v3/company/9130/reports/TrialBalance':
             return _response(200, _trial_balance(params['end_date']))
+        if path == 'v3/company/9130/reports/InventoryValuationSummary':
+            return _response(200, _inventory_valuation(params['report_date']))
         self.assertEqual(path, 'v3/company/9130/query')
         entity, _where, start, size = QUERY.fullmatch(params['query']).groups()
         key = (entity, int(start))
@@ -148,16 +164,21 @@ class TestQbExtract(RelayStandIn, TransactionCase):
             mock.assert_not_called()
         calls = self.relay.call_args_list
         self.assertEqual({c.args[:3] for c in calls}, {(MODULE, 'quickbooks@%d' % connection.id, 'GET')})
-        self.assertEqual([c.kwargs['params']['query'] for c in calls[:-1]], QUERIES)
-        self.assertEqual({c.args[3] for c in calls[:-1]}, {'v3/company/9130/query'})
+        self.assertEqual([c.kwargs['params']['query'] for c in calls[:-2]], QUERIES)
+        self.assertEqual({c.args[3] for c in calls[:-2]}, {'v3/company/9130/query'})
         self.assertEqual({c.kwargs['params']['minorversion'] for c in calls}, {'75'})
         today = fields.Date.to_string(fields.Date.context_today(connection))
-        self.assertEqual((calls[-1].args[3], calls[-1].kwargs['params']),
-                         ('v3/company/9130/reports/TrialBalance', {'end_date': today, 'minorversion': '75'}))
+        # both reports at the same date, each with its parameter: end_date, and report_date for the inventory
+        # (QuickBooks-V3-DotNET-SDK, Test/Intuit.Ipp.Test/SDKV3Test/Services/QBO/Reports.cs)
+        self.assertEqual([(c.args[3], c.kwargs['params']) for c in calls[-2:]],
+                         [('v3/company/9130/reports/TrialBalance', {'end_date': today, 'minorversion': '75'}),
+                          ('v3/company/9130/reports/InventoryValuationSummary',
+                           {'report_date': today, 'minorversion': '75'})])
         self.assertEqual(self._counts(), COUNTS)
-        report = self._staged().filtered(lambda s: s.object_type == 'custom')
-        self.assertEqual((report.source_id, report.normalized_code, report.raw_payload),
-                         ('TrialBalance', today, _trial_balance(today)))
+        reports = self._staged().filtered(lambda s: s.object_type == 'custom')
+        self.assertEqual([(report.source_id, report.normalized_code, report.raw_payload) for report in reports],
+                         [('TrialBalance', today, _trial_balance(today)),
+                          ('InventoryValuationSummary', today, _inventory_valuation(today))])
         invoice = self._staged().filtered(lambda s: s.object_type == 'invoice')
         self.assertEqual((invoice.source_id, invoice.source_realm, invoice.raw_payload),
                          ('130', '9130', self.intuit['Invoice'][0]))
@@ -261,6 +282,9 @@ class TestQbExtract(RelayStandIn, TransactionCase):
         self.assertEqual(connection._migration_normalize('custom', _trial_balance('2026-10-31')), {
             'source_id': 'TrialBalance', 'source_realm': '9130', 'normalized_name': 'TrialBalance',
             'normalized_code': '2026-10-31', 'normalized_active': True})
+        self.assertEqual(connection._migration_normalize('custom', _inventory_valuation('2026-10-31')), {
+            'source_id': 'InventoryValuationSummary', 'source_realm': '9130',
+            'normalized_name': 'InventoryValuationSummary', 'normalized_code': '2026-10-31', 'normalized_active': True})
 
     def test_08_an_error_of_intuit_fails_the_run_and_keeps_its_cursor(self):
         connection = self._new(fgt_consent=True)

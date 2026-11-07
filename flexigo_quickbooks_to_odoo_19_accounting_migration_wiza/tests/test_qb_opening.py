@@ -13,7 +13,7 @@ from odoo.tests import TransactionCase, tagged
 
 from . import test_qb_load
 from .test_fgt_cloud import RelayStandIn, _response
-from .test_qb_extract import QUERY
+from .test_qb_extract import QUERY, _inventory_valuation
 
 CUTOFF = '2026-10-31'
 
@@ -81,6 +81,7 @@ class TestQbOpening(RelayStandIn, TransactionCase):
                       'DueDate': '2026-11-20', 'Balance': 108.09}],
             'CreditMemo': [], 'VendorCredit': [],   # test_08
         }
+        self.inventory = []   # the rows of the Inventory Valuation Summary: test_qb_stock
         # debit 1000 + 420 + 200 = credit 108.09 + 911.91 + 600 = 1620
         self.trial_balance = [_row('33', 'Checking', '1000.00'), _row('84', 'Accounts Receivable (A/R)', '420.00'),
                               _row('60', 'Rent', '200.00'), _row('91', 'Accounts Payable (A/P)', credit='108.09'),
@@ -97,6 +98,8 @@ class TestQbOpening(RelayStandIn, TransactionCase):
                 'Columns': {'Column': [{'ColTitle': '', 'ColType': 'Account'}, {'ColTitle': 'Debit', 'ColType': 'Money'},
                                        {'ColTitle': 'Credit', 'ColType': 'Money'}]},
                 'Rows': {'Row': [*self.trial_balance, total]}})
+        if path.endswith('/reports/InventoryValuationSummary'):
+            return _response(200, _inventory_valuation(CUTOFF, self.inventory))
         entity, _where, start, _size = QUERY.fullmatch(params['query']).groups()
         rows = self.intuit[entity] if start == '1' else []
         return _response(200, {'QueryResponse': {entity: rows} if rows else {}})
