@@ -87,6 +87,17 @@ QBO_OPEN_ITEMS = {
 QBO_AGING = {'asset_receivable': 'ar_aging', 'liability_payable': 'ap_aging'}
 RECONCILIATION_TOLERANCE = 0.01
 
+
+def _report_rows(report):
+    """The cells of the rows of an Intuit report that name an account or an item (ColData[0].id), those inside its
+    sections too: a row is a section (Header, Rows, Summary) or a data row (ColData), Report.xsd Row. A section, its
+    summary and the TOTAL name none and are left out."""
+    rows = list((report.get('Rows') or {}).get('Row', []))
+    for row in rows:   # the rows of a section are added to the list being walked
+        rows += (row.get('Rows') or {}).get('Row', [])
+    return [row['ColData'] for row in rows if (row.get('ColData') or [{}])[0].get('id')]
+
+
 def _fernet(env):
     """FR-004: the Fernet keys are MIGRATION_ENCRYPTION_KEY when it is a valid key, and one derived from the database
     secret (only administrators read it). New values use the first; any of them decrypts, so setting or removing the
@@ -572,10 +583,7 @@ class QbConnection(models.Model):
             raise UserError(_('The Trial Balance of QuickBooks has no end date or no Debit and Credit columns.'))
         debit, credit = titles.index('Debit'), titles.index('Credit')
         balances, missing = {}, []
-        for row in (report.get('Rows') or {}).get('Row', []):
-            cells = row.get('ColData') or []
-            if not cells or not cells[0].get('id'):
-                continue   # the TOTAL summary
+        for cells in _report_rows(report):
             account = self._qb_linked(project, 'account', cells[0]['id'])
             amount = float(cells[debit].get('value') or 0) - float(cells[credit].get('value') or 0)
             if not account:
@@ -725,12 +733,7 @@ class QbConnection(models.Model):
             raise UserError(_('The Inventory Valuation Summary of QuickBooks has no Qty and Asset Value columns.'))
         quantity_at, value_at = titles.index('Qty'), titles.index('Asset Value')
         stock, problems = {}, []
-        rows = list((report.get('Rows') or {}).get('Row', []))
-        for row in rows:   # the rows of a section are added to the list being walked
-            rows += (row.get('Rows') or {}).get('Row', [])
-            cells = row.get('ColData') or []
-            if not cells or not cells[0].get('id'):
-                continue   # a section, its summary or the TOTAL
+        for cells in _report_rows(report):
             quantity, value = (float(cells[at].get('value') or 0) for at in (quantity_at, value_at))
             if not quantity and not value:
                 continue
