@@ -7,13 +7,15 @@ NO stock valuation entry: the opening entry already brings the inventory account
 neither in perpetual (real_time) nor in periodic valuation, nor at Odoo's stock closing. Then Odoo's value against
 QuickBooks', item by item, in migration.reconciliation ('inventory'). Staged by the real extraction and loaded by the
 real engine (migration.run)."""
+from datetime import datetime
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from . import test_qb_load, test_qb_opening
 from .test_fgt_cloud import RelayStandIn
-from .test_qb_opening import CUTOFF, _row
+from .test_qb_opening import _row
 
 
 def _item(item_id, name, sku, qty, value):
@@ -38,6 +40,7 @@ class TestQbStock(RelayStandIn, TransactionCase):
         super().setUpClass()
         cls.usd = cls.env.ref('base.USD')
         cls.company = cls.env['res.company'].create({'name': 'QB stock Co', 'currency_id': cls.usd.id})
+        cls.company.partner_id.tz = 'Europe/Madrid'   # UTC+1 on 31-10-2026
         cls.project = cls.env['migration.project'].create({'name': 'QB stock', 'source_type': 'qbo',
                                                            'company_id': cls.company.id})
         cls.env['account.journal'].create({'name': 'Miscellaneous', 'code': 'QBMSC', 'type': 'general',
@@ -121,7 +124,8 @@ class TestQbStock(RelayStandIn, TransactionCase):
         moves = self._stock_moves()
         self.assertEqual(set(moves.mapped('state')), {'done'})
         self.assertEqual(set(moves.mapped('location_dest_id')), {self.warehouse.lot_stock_id})
-        self.assertEqual(set(moves.mapped('date')), {self.company._to_datetime_upper_bound(CUTOFF).replace(microsecond=0)})
+        # at the end of the cut-off day, in UTC and in the company's time zone (23:59:59 in Madrid)
+        self.assertEqual(set(moves.mapped('date')), {datetime(2026, 10, 31, 22, 59, 59)})
         # no stock valuation entry: the opening is the only entry, and the inventory account keeps QuickBooks' balance
         self.assertEqual(self._moves(), self._loaded('custom', 'TrialBalance'))
         self.assertEqual(self._inventory_account(), 330.0)

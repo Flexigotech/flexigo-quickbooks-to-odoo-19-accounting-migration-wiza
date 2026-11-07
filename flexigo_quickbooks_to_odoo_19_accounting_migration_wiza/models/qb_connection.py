@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from odoo import Command, models, fields, api, _
 from odoo.exceptions import RedirectWarning, UserError
 
@@ -766,7 +766,12 @@ class QbConnection(models.Model):
         source = Location.search([('name', '=', OPENING_STOCK), ('usage', '=', 'inventory'),
                                   ('company_id', '=', company.id), ('valuation_account_id', '=', False)], limit=1) \
             or Location.create({'name': OPENING_STOCK, 'usage': 'inventory', 'company_id': company.id})
-        moment = company._to_datetime_upper_bound(cutoff).replace(microsecond=0)
+        # the last second of the cut-off day in UTC and in the company's time zone: builds of Odoo 19 end a day in one
+        # or the other (stock_account product.py _compute_value: time.max, or res.company._to_datetime_upper_bound)
+        day_end = datetime.combine(fields.Date.to_date(cutoff), time(23, 59, 59))
+        offset = fields.Datetime.context_timestamp(company.with_context(tz=company.partner_id.tz or 'UTC'),
+                                                   day_end).utcoffset()
+        moment = min(day_end, day_end - offset)
         for product, (quantity, value) in stock.items():
             product.with_context(valuation_date=moment).standard_price = value / quantity
         moves = self.env['stock.move'].with_company(company).create([{
