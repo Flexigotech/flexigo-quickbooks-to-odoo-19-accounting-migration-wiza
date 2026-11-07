@@ -249,3 +249,20 @@ class TestQbOpening(RelayStandIn, TransactionCase):
         self.assertEqual(sorted(staged.mapped('source_id')), ['160', '161', '170', '171'])
         for staging in staged:
             self.assertIsNone(self.connection._migration_load_vals(staging))   # no credit note is created
+
+    def test_09_the_accounts_inside_sections_of_the_trial_balance_are_in_the_opening(self):
+        """A row of an Intuit report is a section (Header, Rows, Summary) or a data row (ColData), Report.xsd Row:
+        the accounts inside sections, nested too, are balances like the rest and nothing else counts."""
+        def section(name, rows):
+            return {'type': 'Section', 'Header': {'ColData': [{'value': name}, {'value': ''}, {'value': ''}]},
+                    'Rows': {'Row': rows},
+                    'Summary': {'ColData': [{'value': 'Total %s' % name}, {'value': '9999.00'}, {'value': ''}]}}
+        rows = self.trial_balance
+        self.trial_balance = [rows[0], section('Assets', [rows[1], section('Expenses', [rows[2]])]), *rows[3:]]
+        load = self._load()
+        move = self._loaded('custom', 'TrialBalance')
+        self.assertEqual(move.state, 'posted', load.error_messages)
+        self.assertEqual({code: sum(self._lines(code).mapped('balance')) for code in self.accounts},
+                         {'QB1010': 1000.0, 'QB1200': 420.0, 'QB2000': -108.09, 'QB3000': -911.91, 'QB4000': -600.0,
+                          'QB6000': 200.0})
+        self.assertEqual(self._tie_out('trial_balance', 'QB6000'), (200.0, 200.0, False))
