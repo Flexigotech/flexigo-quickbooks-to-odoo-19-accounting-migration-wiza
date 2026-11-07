@@ -34,7 +34,11 @@
   no tax or income is counted twice. A Trial Balance that does not balance creates nothing, and loading again
   duplicates nothing. Then Odoo's balance at that date is compared with QuickBooks', account by account, and each
   receivable and payable account with its open items, in the reconciliation of the project: a difference of more
-  than 0.01 blocks Reconciled. Credit memos, vendor credits and stock quantities come next.
+  than 0.01 blocks Reconciled. Stock quantities come next.
+- Unapplied credit memos and vendor credits are open items of the opening entry too, with the opposite sign (a credit
+  on the receivables, a debit on the payables), with their customer or vendor and in their own currency at their
+  exchange rate, so the receivables and payables tie-outs match QuickBooks. Every credit memo and vendor credit is
+  extracted (QuickBooks cannot be asked for only the open ones); the fully applied ones give no line.
 
 ## 19.0.1.0.5 (2026-11-05)
 - Each QuickBooks connection and staging row stays in its company: a Migration Manager of another company no longer

@@ -2,6 +2,15 @@
 from odoo import models, fields, api
 
 
+class MigrationStagingRecord(models.Model):
+    _inherit = 'migration.staging.record'
+
+    # BW step 4b-2c: the credit notes QuickBooks keeps apart from invoices and bills (Finance.xsd), open items of the
+    # opening entry; the base does not know them. A required selection needs a policy for the values it adds.
+    object_type = fields.Selection(selection_add=[('creditmemo', 'CreditMemo'), ('vendorcredit', 'VendorCredit')],
+                                   ondelete={'creditmemo': 'cascade', 'vendorcredit': 'cascade'})
+
+
 class QbStaging(models.Model):
     _name = 'qb.staging'
     _description = 'QuickBooks Staging Record Enhancer (FR-010/012)'
