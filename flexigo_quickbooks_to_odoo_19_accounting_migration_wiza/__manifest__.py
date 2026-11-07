@@ -28,6 +28,7 @@
         'sale_management',
         'purchase',
         'stock',
+        'stock_account',
     ],
     'data': [
         'security/flexigo_quickbooks_security.xml',

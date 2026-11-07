@@ -34,11 +34,21 @@
   no tax or income is counted twice. A Trial Balance that does not balance creates nothing, and loading again
   duplicates nothing. Then Odoo's balance at that date is compared with QuickBooks', account by account, and each
   receivable and payable account with its open items, in the reconciliation of the project: a difference of more
-  than 0.01 blocks Reconciled. Stock quantities come next.
+  than 0.01 blocks Reconciled.
 - Unapplied credit memos and vendor credits are open items of the opening entry too, with the opposite sign (a credit
   on the receivables, a debit on the payables), with their customer or vendor and in their own currency at their
   exchange rate, so the receivables and payables tie-outs match QuickBooks. Every credit memo and vendor credit is
   extracted (QuickBooks cannot be asked for only the open ones); the fully applied ones give no line.
+- The stock at the cut-off: QuickBooks' Inventory Valuation Summary at the date of the Trial Balance (extracted with
+  it) gives the quantity and the asset value of each inventory item, and they go into the main warehouse of the
+  company of the project, on the products the items became, valued at QuickBooks' value (its cost is the value over
+  the quantity). They come from a location of their own, "QuickBooks opening stock", with no valuation account, so no
+  stock valuation entry is made, in perpetual or periodic valuation: the inventory account keeps the balance of the
+  opening entry, and Odoo's stock closing finds nothing to post. An item that is not loaded as a storable product, or
+  below zero, is listed and no stock is loaded; loading again moves nothing twice and does not put back the purchase
+  cost of the items. Odoo's value against QuickBooks', item by item, goes to the reconciliation (Inventory): a
+  difference of more than 0.01 blocks Reconciled. The names of the report's columns (Qty, Asset Value) are not yet
+  checked against a QuickBooks sandbox.
 
 ## 19.0.1.0.7 (2026-11-07)
 - App Store listing: the manifest no longer links to an external website (its description gave a web address for service enquiries; now the e-mail) and the page links only to the support e-mail and to FlexigoTech apps on Odoo Apps (Odoo Apps vendor guidelines). No functional change.
