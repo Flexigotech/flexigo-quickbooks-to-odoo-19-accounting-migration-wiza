@@ -1,7 +1,7 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
 ## 18.0.1.0.5 (2026-11-07)
-- App Store listing: the manifest no longer links to an external website and the page links only to the support e-mail (Odoo Apps vendor guidelines). No functional change.
+- App Store listing: the manifest no longer links to an external website (its description gave a web address for service enquiries; now the e-mail) and the page links only to the support e-mail and to FlexigoTech apps on Odoo Apps (Odoo Apps vendor guidelines). No functional change.
 
 ## 18.0.1.0.4 (2026-11-07)
 - Only a Migration Manager creates, edits and deletes the QuickBooks object catalogue, staging rows, value
