@@ -48,7 +48,7 @@ and loading it into Odoo 19 with a repeatable, reconciled cutover process.
 One-off purchase, no subscription. The actual migration is delivered as a paid
 FlexigoTech implementation service.
 
-For service enquiries: https://flexigotech.com/services
+For service enquiries: comercial@flexigobe.com
     """,
     'external_dependencies': {
         'python': [
