@@ -266,3 +266,41 @@ class TestQbOpening(RelayStandIn, TransactionCase):
                          {'QB1010': 1000.0, 'QB1200': 420.0, 'QB2000': -108.09, 'QB3000': -911.91, 'QB4000': -600.0,
                           'QB6000': 200.0})
         self.assertEqual(self._tie_out('trial_balance', 'QB6000'), (200.0, 200.0, False))
+
+    def test_10_a_mapping_changed_after_a_load_is_the_account_of_the_opening(self):
+        """R-k of marc (BW4, I-1): the link of an account the user maps follows the mapping. A first load that leaves no
+        opening (the Trial Balance does not balance), then Checking mapped to another account of the chart: the opening
+        of the next load is on that account, not on the one of the first load."""
+        self.trial_balance[4] = _row('92', 'Retained Earnings', credit='900.00')
+        self._load()
+        self.assertEqual(self._loaded('account', '33'), self.accounts['QB1010'])
+        other = self.env['account.account'].with_company(self.company).create({
+            'name': 'Checking 2', 'code': 'QB1011', 'account_type': 'asset_cash',
+            'company_ids': [Command.set(self.company.ids)]})
+        self.project.mapping_set_id = self.env['migration.mapping.set'].create({
+            'name': 'QB opening map', 'version': 'r2', 'project_id': self.project.id})
+        self.env['migration.mapping.value'].create({
+            'mapping_set_id': self.project.mapping_set_id.id, 'category': 'account_type', 'source_value': '33',
+            'target_model': 'account.account', 'target_record_id': other.id})
+        self.trial_balance[4] = _row('92', 'Retained Earnings', credit='911.91')
+        load = self._load()
+        self.assertEqual(self._loaded('account', '33'), other, load.error_messages)
+        move = self._loaded('custom', 'TrialBalance')
+        self.assertTrue(move, load.error_messages)
+        self.assertEqual(sum(move.line_ids.filtered(lambda line: line.account_id == other).mapped('balance')), 1000.0)
+        self.assertFalse(self._lines('QB1010'))
+
+    def test_11_another_project_of_the_same_company_posts_no_second_opening(self):
+        """R-k of marc (BW4, I-2): the opening of a company is made once, whatever the project: a second project of the
+        same company loading the same QuickBooks company says so and posts nothing."""
+        self._load()
+        first = self._loaded('custom', 'TrialBalance')
+        self.assertTrue(first)
+        self.project = self.env['migration.project'].create({'name': 'QB opening again', 'source_type': 'qbo',
+                                                             'company_id': self.company.id})
+        self.connection = self._new(fgt_consent=True, company_id=self.company.id)
+        load = self._load()
+        self.assertEqual(self._moves(), first)
+        self.assertFalse(self._loaded('custom', 'TrialBalance'))
+        self.assertIn('QB opening', load.error_messages)
+        self.assertIn('already', load.error_messages)
