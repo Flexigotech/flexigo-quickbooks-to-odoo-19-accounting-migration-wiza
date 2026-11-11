@@ -1,6 +1,10 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
 ## 19.0.1.1.0 (unreleased)
+- An account the user maps follows the mapping: changing the mapping after a load (or mapping again an account deleted
+  in Odoo after a load) is the account of the opening of the next load. The opening entry and the stock at the cut-off
+  are made once per company: another migration project of the same company says so and posts nothing.
+- The listing says what the module does: a one-time move of QuickBooks Online into Odoo at a cut-off date, not a sync.
 - New QuickBooks Online connections go through FlexigoTech Cloud, which needs its trial or subscription (Settings >
   FlexigoTech Cloud): the client ID and secret of your Intuit app go to its vault with your consent and never stay in
   Odoo, every call to QuickBooks passes through it, and the authorization code is exchanged there, so no QuickBooks

@@ -18,7 +18,7 @@
     'license': 'OPL-1',
     'price': 9.0,
     'currency': 'EUR',
-    'summary': 'Sync Odoo with QuickBooks Online. Needs FlexigoTech Cloud subscription (from 49 EUR/month, VAT excl.). Moves your QuickBooks Online books into Odoo 19 at a cut-off date: master data, one opening entry with the open items, stock and a reconciliation account by account.',
+    'summary': 'Move QuickBooks Online into Odoo 19 once, at a cut-off date. Needs FlexigoTech Cloud subscription (from 49 EUR/month, VAT excl.). Moves your QuickBooks Online books into Odoo 19 at a cut-off date: master data, one opening entry with the open items, stock and a reconciliation account by account.',
     'depends': [
         'flexigotech_cloud',
         'flexigo_migration_base',

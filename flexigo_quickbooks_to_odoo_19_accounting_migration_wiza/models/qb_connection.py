@@ -434,9 +434,25 @@ class QbConnection(models.Model):
         opening of step 4b-2b finds it), with no values."""
         key = {'project_id': staging.project_id.id, 'object_type': staging.object_type, 'source_id': staging.source_id}
         Link = self.env['migration.record.link']
-        if not Link.search_count([(name, '=', value) for name, value in key.items()]):
+        link = Link.search([(name, '=', value) for name, value in key.items()], limit=1)
+        if not link:
             Link.create(dict(key, res_model=record._name, res_id=record.id))
+        elif (link.res_model, link.res_id) != (record._name, record.id):
+            # the user mapped it to another record of Odoo (or the one of a load was deleted): the link follows the mapping
+            link.write({'res_model': record._name, 'res_id': record.id})
         return record._name, {}
+
+    def _qb_posted_elsewhere(self, staging):
+        """Another project of the same company already posted this entry (the opening or the stock at the cutoff):
+        one per company, whatever the project."""
+        project = staging.project_id
+        for link in self.env['migration.record.link'].search([
+                ('object_type', '=', staging.object_type), ('source_id', '=', staging.source_id),
+                ('project_id', '!=', project.id), ('project_id.company_id', '=', project.company_id.id)]):
+            if self.env[link.res_model].browse(link.res_id).exists():
+                raise UserError(_('%(company)s already has this QuickBooks entry, posted by the migration project '
+                                  '%(project)s: it is made once per company.', company=project.company_id.name,
+                                  project=link.project_id.name))
 
     def _qb_linked(self, project, object_type, source_id):
         """The record of Odoo already loaded from that QuickBooks record, or nothing."""
@@ -565,6 +581,7 @@ class QbConnection(models.Model):
         if not self.env['migration.record.link'].search_count([
                 ('project_id', '=', project.id), ('object_type', '=', staging.object_type),
                 ('source_id', '=', staging.source_id)]):
+            self._qb_posted_elsewhere(staging)
             self._qb_existing(staging, self._qb_opening_move(project, balances, items, cutoff))
         accounts = self.env['account.account'].with_company(project.company_id).browse(
             list(dict.fromkeys([*balances, *items])))
@@ -591,8 +608,9 @@ class QbConnection(models.Model):
             elif amount:
                 balances[account.id] = balances.get(account.id, 0.0) + amount
         if missing:
-            raise UserError(_('These accounts of the Trial Balance are not loaded, so there is no opening entry: '
-                              '%s. Map them in the mapping set of the project and load again.', ', '.join(missing)))
+            raise UserError(_('These accounts of the Trial Balance are not loaded, or were deleted in Odoo after a load, so '
+                              'there is no opening entry: %s. Map them to an account of the chart in the mapping set of '
+                              'the project and load again.', ', '.join(missing)))
         return balances, fields.Date.to_date(header['EndPeriod'])
 
     def _qb_open_items(self, project, balances):
@@ -711,6 +729,7 @@ class QbConnection(models.Model):
         if not self.env['migration.record.link'].search_count([
                 ('project_id', '=', project.id), ('object_type', '=', staging.object_type),
                 ('source_id', '=', staging.source_id)]):
+            self._qb_posted_elsewhere(staging)
             self._qb_existing(staging, self._qb_stock_moves(project.company_id, stock, cutoff))
         for product, (_quantity, value) in stock.items():
             self._qb_tie_out(project, 'inventory', product.default_code or product.name, product.name, value,
