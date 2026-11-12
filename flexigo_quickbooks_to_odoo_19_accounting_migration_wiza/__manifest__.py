@@ -1,16 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'author': 'FlexigoTech',
-    'images': [
-        'static/description/banner.png',
-        'static/description/screenshots-marketing/00-overview.png',
-        'static/description/screenshots-marketing/02-qb-dimension-default-map.png',
-        'static/description/screenshots-marketing/03-qb-mapping-default-value.png',
-        'static/description/screenshots-marketing/04-qb-mapping-enhancer.png',
-        'static/description/screenshots-marketing/05-qb-object-catalogue.png',
-        'static/description/screenshots-marketing/06-qb-reconciliation-enhancer.png',
-        'static/description/screenshots-marketing/07-qb-staging.png',
-    ],
+    'images': ["static/description/fgt/cover.gif"],
     'support': 'comercial@flexigobe.com',
     'name': 'QuickBooks Migration Odoo',
     'version': '19.0.1.1.0',
