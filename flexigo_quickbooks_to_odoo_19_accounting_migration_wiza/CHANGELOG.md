@@ -1,5 +1,10 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 17.0.1.1.2 (unreleased)
+- A signed reconciliation line whose figures change afterwards (its amounts, tolerance or account, edited by hand or
+  brought by a new load) is no longer signed: the reviewer signs it again. The same figures, the name of the account
+  or the notes keep the signature. Duplicating a signed line gives an unsigned copy instead of an access error.
+
 ## 17.0.1.1.1 (unreleased)
 - QuickBooks Desktop: a File Upload connection takes the IIF export of the lists (File > Utilities > Export > Lists to
   IIF Files). Test Connection says how many accounts, classes, customers, vendors and items Extract reads from it,
