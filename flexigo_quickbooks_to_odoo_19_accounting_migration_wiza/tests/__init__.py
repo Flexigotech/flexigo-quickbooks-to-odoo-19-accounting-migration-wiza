@@ -10,3 +10,4 @@ from . import test_qb_opening
 from . import test_qb_stock
 from . import test_seguridad_rpc
 from . import test_qb100
+from . import test_zz_c524_firma
