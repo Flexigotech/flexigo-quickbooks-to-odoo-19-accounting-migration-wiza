@@ -110,7 +110,7 @@ def _fernet(env):
             keys.append(Fernet(key))
         except ValueError:
             _logger.warning("MIGRATION_ENCRYPTION_KEY is not a valid Fernet key: using the key derived from the database")
-    secret = env['ir.config_parameter'].sudo().get_param('database.secret')
+    secret = env['ir.config_parameter'].sudo().get_str('database.secret')
     keys.append(Fernet(base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())))
     return MultiFernet(keys)
 
@@ -797,7 +797,7 @@ class QbConnection(models.Model):
         for product, (quantity, value) in stock.items():
             product.with_context(valuation_date=moment).standard_price = value / quantity
         moves = self.env['stock.move'].with_company(company).create([{
-            'product_id': product.id, 'product_uom': product.uom_id.id, 'product_uom_qty': quantity,
+            'product_id': product.id, 'uom_id': product.uom_id.id, 'product_uom_qty': quantity,
             'location_id': source.id, 'location_dest_id': warehouse.lot_stock_id.id, 'company_id': company.id,
             'origin': _('QuickBooks stock at %s', cutoff)} for product, (quantity, _value) in stock.items()])
         moves = moves._action_confirm()

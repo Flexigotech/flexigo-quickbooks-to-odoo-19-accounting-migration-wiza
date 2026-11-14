@@ -1,5 +1,11 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 20.0.1.1.0 (unreleased)
+- First Odoo 20.0 release, ported from 19.0.1.1.0 with the same features. Needs FlexigoTech Migration Base 20.0.1.1.0 (its
+  migration engine). Access rights and the company rules are rows of `security/ir.access.csv`; the stock at the cut-off is
+  moved with the Odoo 20 unit field of stock moves; the encryption key reads the database secret with Odoo 20's
+  `ir.config_parameter.get_str`.
+
 ## 19.0.1.1.0 (unreleased)
 - An account the user maps follows the mapping: changing the mapping after a load (or mapping again an account deleted
   in Odoo after a load) is the account of the opening of the next load. The opening entry and the stock at the cut-off

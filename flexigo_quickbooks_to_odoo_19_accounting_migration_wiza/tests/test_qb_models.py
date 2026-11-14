@@ -57,8 +57,8 @@ class TestQBModels(TransactionCase):
         self.assertGreater(len(catalogue), 0)
 
     def test_access_rules_exist(self):
-        """FR-039: Verify ir.model.access rules are configured"""
-        access = self.env['ir.model.access'].search([
+        """FR-039: Verify the access rights are configured (Odoo 20: ir.access)"""
+        access = self.env['ir.access'].search([
             ('model_id.model', 'in', [
                 'qb.connection',
                 'qb.object.catalogue',

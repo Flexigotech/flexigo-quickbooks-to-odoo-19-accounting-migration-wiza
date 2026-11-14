@@ -90,8 +90,8 @@ class TestQbStock(RelayStandIn, TransactionCase):
                               _row('92', 'Retained Earnings', credit='1330.00')]
 
     def _valuation(self, mode):
+        # Odoo 20: the field's inverse sets the product category default (company_default_for, base res_company.py)
         self.company.inventory_valuation = mode
-        self.company._set_category_defaults()
 
     def _product(self, item_id):
         return self._loaded('item', item_id).product_variant_id.with_company(self.company)
