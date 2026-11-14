@@ -9,9 +9,13 @@
   stops as Failed, which keeps what it extracted and goes on from that page.
 - A connection made before 1.1.0 renews its access token once with the refresh token when QuickBooks answers 401,
   stores the new tokens encrypted and asks again; if Intuit does not renew it, it says to connect again.
-- QuickBooks Migration / Reviewer signs off the reconciliation (Sign Off); other internal users only read it.
+- QuickBooks Migration / Reviewer signs off the reconciliation (Sign Off); other internal users only read it, and a
+  Migration Manager edits a line but cannot write who signed it or when.
 - Migration > Staging shows what Extract brought before Load writes anything, and a Migration Manager
   deletes the staging of a loaded project (Delete Staging), with the personal data of customers and vendors in it.
+  Staging rows and the links of what was loaded are not deleted one by one (a deleted link would load that record
+  twice).
+- A file that is no IIF export (a picture, an archive, a PDF) is told as such by Test Connection and Extract.
 - The README says only what the module does (it promised a dry-run mode, delta sync, a Refresh Token button, PII
   redaction and a rollback that do not exist).
 
