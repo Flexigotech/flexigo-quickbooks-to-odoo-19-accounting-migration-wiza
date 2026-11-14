@@ -1,5 +1,61 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 18.0.1.1.0 (2026-11-14)
+- An account the user maps follows the mapping: changing the mapping after a load (or mapping again an account deleted
+  in Odoo after a load) is the account of the opening of the next load. The opening entry and the stock at the cut-off
+  are made once per company: another migration project of the same company says so and posts nothing.
+- The listing says what the module does: a one-time move of QuickBooks Online into Odoo at a cut-off date, not a sync.
+- New QuickBooks Online connections go through FlexigoTech Cloud, which needs its trial or subscription (Settings >
+  FlexigoTech Cloud): the client ID and secret of your Intuit app go to its vault with your consent and never stay in
+  Odoo, every call to QuickBooks passes through it, and the authorization code is exchanged there, so no QuickBooks
+  token reaches Odoo. Without the service nothing is sent and nothing in Odoo is deleted.
+- Connections made before 1.1.0 keep working exactly as bought ("Direct"): the OAuth from Odoo, "Test Connection" and
+  their tokens encrypted in Odoo. A connection's route never changes, and only an administrator deletes a direct one.
+- Upgrading: put `flexigotech_cloud` in the same addons path, restart and update the module (Apps > Upgrade, or
+  `-u flexigo_quickbooks_to_odoo_19_accounting_migration_wiza`); restarting without updating does not load it.
+- A copy of the database (neutralized) forgets the QuickBooks tokens; uninstalling deletes the Intuit apps kept in
+  FlexigoTech Cloud. New connections default to QuickBooks API minor version 75.
+- Extraction into the migration staging, page by page through FlexigoTech Cloud, by the engine of the Migration Base
+  (Extract on a migration run): accounts, tax codes, terms, classes, departments, customers, vendors, items, open
+  invoices and open bills, and the Trial Balance to the day of the extraction. If FlexigoTech Cloud stops answering or
+  the service ends, the run pauses where it was and goes on by itself; the staging is never deleted. A connection made
+  before 1.1.0 says that extracting needs a new connection through FlexigoTech Cloud. The Intuit app and the sandbox of
+  a connection already saved in FlexigoTech Cloud no longer change (create a new connection instead).
+- The unused report client (it sent `as_of_date`, which QuickBooks Online reports do not take) and the query helper
+  that never ended are gone.
+- Load of the master data from the staging into Odoo (Load on a migration run), in the company of the project and
+  archived when inactive in QuickBooks; loading again updates the same records and never creates again what you
+  deleted. Accounts are mapped to your chart (an Account Type value of the project's mapping set, else the account
+  number) and only created when the mapping gives the code of a new one; customers and vendors become partners,
+  inventory, non-inventory and service items products (with their income and expense accounts once those are
+  loaded), terms with due days payment terms (with their early payment discount), and classes and departments
+  analytic accounts in the plan of the dimension mapping. A tax code is never created as a tax; date-driven terms
+  and unmapped accounts, classes and departments are listed in the run instead of being guessed.
+- The Trial Balance becomes ONE posted opening entry at its end date, in the first general journal of the company
+  (the one Odoo's own opening entry takes): one line per account with its balance (accounts grouped in sections of
+  the report included; section totals are not counted), and the receivable and payable
+  accounts one line per open invoice or bill (customer or vendor, its number as label, due date and open balance, in
+  its own currency when it has another), so you match them with payments in Odoo; no invoice or bill is created, so
+  no tax or income is counted twice. A Trial Balance that does not balance creates nothing, and loading again
+  duplicates nothing. Then Odoo's balance at that date is compared with QuickBooks', account by account, and each
+  receivable and payable account with its open items, in the reconciliation of the project: a difference of more
+  than 0.01 blocks Reconciled.
+- Unapplied credit memos and vendor credits are open items of the opening entry too, with the opposite sign (a credit
+  on the receivables, a debit on the payables), with their customer or vendor and in their own currency at their
+  exchange rate, so the receivables and payables tie-outs match QuickBooks. Every credit memo and vendor credit is
+  extracted (QuickBooks cannot be asked for only the open ones); the fully applied ones give no line.
+- The stock at the cut-off: QuickBooks' Inventory Valuation Summary at the date of the Trial Balance (extracted with
+  it) gives the quantity and the asset value of each inventory item, and they go into the main warehouse of the
+  company of the project, on the products the items became, valued at QuickBooks' value (its cost is the value over
+  the quantity). They come from a location of their own, "QuickBooks opening stock", whose moves make no stock
+  valuation entry, in perpetual or periodic valuation: the inventory account keeps the balance of the opening entry. An item that is not loaded as a storable product, or
+  below zero, is listed and no stock is loaded; loading again moves nothing twice and does not put back the purchase
+  cost of the items. Odoo's value against QuickBooks', item by item, goes to the reconciliation (Inventory): a
+  difference of more than 0.01 blocks Reconciled. The names of the report's columns (Qty, Asset Value) are not yet
+  checked against a QuickBooks sandbox.
+- Ported from 19.0.1.1.0: the same code, tests and FlexigoTech Cloud service on Odoo 18. It needs FlexigoTech Migration Base 18.0.1.1.0 (its migration engine) and FlexigoTech Cloud in the addons path.
+- Odoo 18: a non-administrator cannot give an administrator-only field of a connection when creating it (Odoo 19 checks it by itself).
+
 ## 18.0.1.0.5 (2026-11-07)
 - App Store listing: the manifest no longer links to an external website (its description gave a web address for service enquiries; now the e-mail) and the page links only to the support e-mail and to FlexigoTech apps on Odoo Apps (Odoo Apps vendor guidelines). No functional change.
 

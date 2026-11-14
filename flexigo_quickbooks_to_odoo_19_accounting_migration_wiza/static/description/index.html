@@ -1,191 +1,436 @@
-<!-- QuickBooks to Odoo 19 Accounting Migration Wizard &mdash; flexigo_quickbooks_to_odoo_19_accounting_migration_wiza -->
-<section class="oe_container">
-  <div class="container py-4">
+<!-- fgt-cloud:start -->
+<section style="margin:0 0 32px">
+<div style="background-color:#0E1424;border-radius:24px;padding:40px 32px 36px">
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3" style="margin:0 0 28px">
+<img src="fgt/logo-flexigotech.png" alt="FlexigoTech" style="height:30px;width:auto">
+<div><p style="color:#B4BFD3;font-size:13px;font-weight:600;margin:0 0 8px">Works with</p><div class="d-flex flex-wrap align-items-center gap-3"><img src="fgt/logo-odoo.png" alt="Odoo" style="height:24px;width:auto"></div></div>
+</div>
+<h2 class="fs-1" style="color:#FFFFFF;font-weight:800;line-height:1.08;letter-spacing:-0.02em;max-width:820px;margin:0">Migrate QuickBooks Online to Odoo 18</h2>
+<p class="fs-3" style="color:#FFFFFF;font-weight:700;line-height:1.2;margin:24px 0 0">&euro;9 + FlexigoTech Cloud</p>
+<p style="color:#B4BFD3;font-size:17px;margin:6px 0 0">Connector plan: &euro;49/month + VAT.</p>
+<div class="d-flex flex-wrap align-items-center gap-3" style="margin:28px 0 0">
+<a href="#fgt-start" class="btn btn-light btn-lg" style="color:#0E1424;font-weight:700">Try 14 days free</a>
+<a href="mailto:comercial@flexigobe.com" class="btn btn-outline-light btn-lg" style="color:#FFFFFF;background-color:transparent;border-color:#55617A">Email support</a>
+</div>
+</div>
+</section>
+<section style="margin:0 0 40px">
+<div class="row row-cols-1 row-cols-md-3 g-4">
+<div class="col"><div class="d-flex align-items-start gap-3"><img src="fgt/i1.png" width="56" height="56" alt=""><div><p class="text-break" style="color:#0C0D14;font-weight:700;font-size:18px;line-height:1.35;margin:4px 0 0">Read QuickBooks Online with your Intuit app</p></div></div></div>
+<div class="col"><div class="d-flex align-items-start gap-3"><img src="fgt/i2.png" width="56" height="56" alt=""><div><p class="text-break" style="color:#0C0D14;font-weight:700;font-size:18px;line-height:1.35;margin:4px 0 0">Accounts, customers, vendors and products</p></div></div></div>
+<div class="col"><div class="d-flex align-items-start gap-3"><img src="fgt/i3.png" width="56" height="56" alt=""><div><p class="text-break" style="color:#0C0D14;font-weight:700;font-size:18px;line-height:1.35;margin:4px 0 0">One opening entry with the open items</p></div></div></div>
+</div>
+<p class="small" style="color:#5B3C53;margin:16px 0 0">All of the above (requires FlexigoTech Cloud subscription)</p>
+</section>
+<section id="fgt-start" style="margin:0 0 40px">
+<h3 class="fs-3" style="color:#0C0D14;font-weight:800;letter-spacing:-0.01em;margin:0 0 24px">How it works</h3>
+<img src="fgt/pasos.png" class="img-fluid d-none d-md-block" alt="Install it from Odoo Apps, Connect your Intuit app, Extract, load and reconcile">
+<img src="fgt/pasos-movil.png" class="img-fluid d-md-none" alt="Install it from Odoo Apps, Connect your Intuit app, Extract, load and reconcile">
+</section>
+<section id="fgt-precio" style="margin:0 0 32px">
+<div class="border rounded-4" style="padding:28px 24px">
+<div class="border-bottom" style="padding:0 0 14px;margin:0 0 18px">
+<div class="d-flex flex-nowrap align-items-center justify-content-between gap-3">
+<p style="color:#0C0D14;margin:0;white-space:nowrap"><span style="font-weight:800;font-size:28px">&euro;9</span> <span style="font-weight:700">Module</span></p>
+<div class="d-flex flex-nowrap align-items-center gap-3"><img src="icon.png" alt="" width="32" height="32" style="border-radius:8px"><img src="fgt/logo-odoo-claro.png" alt="Odoo" style="height:20px;width:auto"></div>
+</div>
+<p style="color:#505768;margin:6px 0 0">Once per Odoo version<span class="d-none d-md-inline"> &middot; </span><br class="d-md-none">Odoo 18.0, not Odoo Online</p>
+</div>
+<div class="d-flex flex-nowrap align-items-center justify-content-between gap-3" style="margin:0 0 12px">
+<p style="color:#0C0D14;font-weight:700;font-size:18px;margin:0">+ FlexigoTech Cloud</p>
+<img src="fgt/logo-flexigotech-claro.png" alt="FlexigoTech" style="height:22px;width:auto">
+</div>
+<div class="row row-cols-1 row-cols-md-2 g-3">
+<div class="col"><div class="rounded-4 h-100" style="padding:20px;border:1px solid #DDE1EA">
+<p style="color:#0C0D14;font-weight:800;font-size:18px;margin:0">Standard</p>
+<p style="color:#0C0D14;font-weight:800;font-size:28px;line-height:1.2;margin:6px 0 0">&euro;49/month</p>
+<p style="color:#505768;margin:2px 0 16px">or &euro;490/year</p>
+<p style="color:#0C0D14;font-weight:700;margin:0 0 10px">What's included</p>
+<ul class="list-unstyled" style="margin:0">
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">On FlexigoTech Cloud: the extraction of your QuickBooks Online books for new connections</div></li>
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">Module updates</div></li>
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">Support with a first response within 1 working day</div></li>
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">Up to 3 accounts</div></li>
+</ul>
+</div></div>
+<div class="col"><div class="rounded-4 h-100" style="padding:20px;border:1px solid #714B67">
+<p style="color:#714B67;font-weight:800;font-size:18px;margin:0">Pro</p>
+<p style="color:#0C0D14;font-weight:800;font-size:28px;line-height:1.2;margin:6px 0 0">&euro;98/month</p>
+<p style="color:#505768;margin:2px 0 16px">or &euro;980/year</p>
+<p style="color:#0C0D14;font-weight:700;margin:0 0 10px">Everything in Standard, plus</p>
+<ul class="list-unstyled" style="margin:0">
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">Up to 10 accounts</div></li>
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">First response within 4 working hours</div></li>
+<li class="d-flex align-items-start gap-2" style="margin:0 0 10px"><img src="fgt/c-check.png" width="20" height="20" alt="" style="margin:2px 0 0"><div style="color:#0C0D14">Video call if needed</div></li>
+</ul>
+</div></div>
+</div>
+<p style="color:#0C0D14;font-size:16px;line-height:1.5;margin:18px 0 0">The module alone does not work without the subscription: its main function runs on FlexigoTech Cloud. Without a subscription you can view and export your data. <a href="#fgt-legal" style="color:#714B67;font-weight:600">Terms, data sent and privacy</a></p>
+<p style="margin:16px 0 0"><span class="d-inline-flex align-items-center" style="background-color:#E3F4EB;color:#0A6E4D;font-size:15px;font-weight:700;padding:6px 14px 6px 6px;border-radius:999px;margin:0 8px 8px 0"><img src="fgt/c-sintarjeta.png" width="24" height="24" alt="" style="margin:0 8px 0 0">No card needed</span><span class="d-inline-flex align-items-center" style="background-color:#E3F4EB;color:#0A6E4D;font-size:15px;font-weight:700;padding:6px 14px 6px 6px;border-radius:999px;margin:0 8px 8px 0"><img src="fgt/c-salir.png" width="24" height="24" alt="" style="margin:0 8px 0 0">Cancel anytime</span></p>
+</div>
+</section>
+<details id="fgt-packs" style="border:1px solid #E6E9F0;border-radius:8px;padding:12px 16px;margin:0 0 16px">
+<summary style="color:#0C0D14;font-weight:600">Several modules? Pack 3 or All included.</summary>
+<div class="table-responsive"><table class="table table-bordered text-center align-middle" style="margin:8px 0 0">
+<thead class="table-light"><tr><th scope="col"></th><th scope="col">Standard</th><th scope="col">Pro</th></tr></thead>
+<tbody>
+<tr><th scope="row" class="text-start" style="font-weight:600">3-connector pack</th><td>&euro;129/month</td><td>&euro;258/month</td></tr>
+<tr><th scope="row" class="text-start" style="font-weight:600">All included (one database)</th><td>&euro;249/month</td><td>&euro;498/month</td></tr>
+<tr><th scope="row" class="text-start" style="font-weight:600">First response</th><td>1 working day</td><td>4 working hours</td></tr>
+<tr><th scope="row" class="text-start" style="font-weight:600">Video call if needed</th><td>Not included</td><td>Included</td></tr>
+</tbody></table></div>
+</details>
+<details id="fgt-legal" style="border:1px solid #E6E9F0;border-radius:12px;padding:14px 18px;margin:0 0 16px">
+<summary style="color:#0C0D14;font-weight:600">Terms, data sent and privacy</summary>
+<section class="oe_container" id="flexigotech-cloud">
+  <div class="oe_spaced">
+    <div>
+      <div class="alert alert-info">
+        <h3>Before you buy: this app uses a paid external service</h3>
+        <p>New connections with QuickBooks Online work through FlexigoTech Cloud, an external service of FlexigoTech (Flexibles y Accesorios Gobe, S.L., Spain) that runs on our servers, outside your Odoo. Your Intuit app's client secret is kept encrypted on our servers, and each request your Odoo makes to QuickBooks Online goes through FlexigoTech Cloud, which sends it on with a QuickBooks access token that it gets and renews with your Intuit app, and returns the answer. FlexigoTech Cloud also watches the sync and emails you if something fails.</p>
+        <p>You need your own QuickBooks Online account, under the terms of QuickBooks Online. The subscription pays for our service (the connection, the monitoring and support), not for access to QuickBooks Online.</p>
+        <h4>Price</h4>
+        <p>The price on this page is a one-off payment for the module. Paid external service, billed separately: 49 EUR a month or 490 EUR a year per production database, VAT excluded. The staging and test copies of that database are included. The service includes a 14-day trial, no card required. One trial per account and module.</p>
+        <h4>What the subscription includes</h4>
+        <ul>
+          <li>Maintenance of the cloud service and of the connection.</li>
+          <li>The cloud, with monitoring and alerts, and its adaptation to the API changes of each platform when the connection goes through it.</li>
+          <li>Support with response times: the first response within 1 working day.</li>
+          <li>The service on the staging and test copies of your database.</li>
+        </ul>
+        <h4>What it does not include</h4>
+        <ul>
+          <li>The customisation of the module or custom development.</li>
+          <li>Migrations: we do not take care of migrating your database to a new Odoo version.</li>
+          <li>Configuring the module for you (the setup).</li>
+          <li>Importing historical data.</li>
+          <li>Support for modules that are not ours.</li>
+          <li>Third-party costs: you contract and pay for your account on each platform, Odoo and your hosting yourself.</li>
+        </ul>
+        <p>Configuration help and bug fixes are always provided to buyers, with or without the subscription.</p>
+        <h4>How to activate it</h4>
+        <p>Inside Odoo, in Settings &rarr; FlexigoTech Cloud. An administrator first reads and accepts the list of data below: nothing is sent before that. Then you can start the trial or subscribe; you accept the subscription terms there, and payment is made outside Odoo.</p>
+        <h4>What your Odoo sends to FlexigoTech Cloud</h4>
+        <ul>
+          <li>The identifier (uuid) of the database, its address (URL) and the Odoo version.</li>
+          <li>The FlexigoTech modules installed, with their version, and whether the database is a neutralized copy (staging or test).</li>
+          <li>The company name, and the email of the person who accepts, with the date and version of the text accepted.</li>
+          <li>A public code to check that requests come from this database, and a proof that it is this database, computed on your server without sending its secret.</li>
+          <li>A request for its service permit every 6 hours, and the health of the sync: counters and errors (type and code), without the content of your records.</li>
+          <li>The client ID and client secret of your Intuit app for each connection created from this version, which connects through FlexigoTech Cloud, and the QuickBooks tokens that FlexigoTech Cloud gets with them. They are kept encrypted and sent only after an administrator gives consent on that connection; for those connections, your Odoo keeps only the client ID and no QuickBooks token.</li>
+          <li>Each request to QuickBooks Online, with the calls of your QuickBooks Online connections: the authorization code and the return address when you connect, the company information, the queries that read your accounts, tax codes, payment terms, classes, departments, customers, vendors, items, open invoices and bills, credit memos and vendor credits, page by page, and the Trial Balance and Inventory Valuation Summary reports to the day of the extraction; the answers bring those records back to your Odoo, with the names, emails, phone numbers and addresses of your customers and vendors. It may include personal data of your customers or employees; FlexigoTech Cloud passes it on and keeps it only for the time needed to deliver it.</li>
+        </ul>
+        <h4>Where your data is kept</h4>
+        <p>On our servers in Germany. When the subscription or the trial ends, or you disconnect the database, we delete your Intuit app's client secret and the data of that connection within 30 days at most, or sooner if QuickBooks Online requires it.</p>
+        <h4>What stops and what you keep</h4>
+        <p>Requires an active FlexigoTech Cloud subscription: the extraction of your QuickBooks Online books for new connections runs on FlexigoTech Cloud. Your data stays readable and exportable in your Odoo. We never block Odoo and never delete anything in it. Configuration help and bug fixes are always provided to buyers.</p>
+        <p>If you already use an earlier version of this module, it stays installed with your data, and the QuickBooks Online connection saved before this version keeps working directly, as you bought it. Extracting your books into Odoo needs a new connection through FlexigoTech Cloud.</p>
+        <h4>Also in this module</h4>
+        <ul>
+          <li>Payment from Odoo.</li>
+          <li>A check of the service every 6 hours, and health reports.</li>
+          <li>A notice when you uninstall the module.</li>
+        </ul>
+        <p>For Odoo 18.0, on Odoo.sh or on your own server. Not compatible with Odoo Online.</p>
+        <p>Privacy policy: <a href="#fgt-privacy">at the end of this page</a>. Questions: <a href="mailto:comercial@flexigobe.com">comercial@flexigobe.com</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="oe_container" id="fgt-cloud-function">
+  <div class="oe_spaced">
+    <div>
+      <p>The extraction of your QuickBooks Online data through FlexigoTech Cloud, for new connections (requires FlexigoTech Cloud subscription).</p>
+    </div>
+  </div>
+</section>
+</details>
+<!-- fgt-cloud:end -->
+<details style="border:1px solid #E6E9F0;border-radius:8px;padding:12px 16px;margin:0 0 32px">
+<summary style="color:#0C0D14;font-weight:600">All about the QuickBooks migration</summary>
+<section class="oe_container" id="fgt-cloud-function">
+  <div class="oe_spaced">
+    <div>
+      <p>The extraction of your QuickBooks Online data through FlexigoTech Cloud, for new connections (requires FlexigoTech Cloud subscription).</p>
+    </div>
+  </div>
+</section>
+<!-- QuickBooks Migration Odoo - flexigo_quickbooks_to_odoo_19_accounting_migration_wiza (19.0.1.1.0) -->
+<section class="oe_container" style="margin:0;padding:0;">
+  <div style="background-color:#0E1424;color:#ffffff;padding:48px 24px 96px 24px;border-radius:12px;text-align:center;">
+    <p style="display:inline-block;margin:0 0 16px 0;padding:4px 14px;border:1px solid #8FA3FF;border-radius:999px;color:#C9D3FF;font-size:13px;letter-spacing:0.5px;">For Odoo 18.0 &middot; QuickBooks Online</p>
+    <h1 style="color:#ffffff;font-size:36px;font-weight:700;line-height:1.2;margin:0 0 16px 0;">Move your QuickBooks Online books into Odoo 18, reconciled</h1>
+    <p style="color:#E6EAFF;font-size:18px;line-height:1.5;max-width:820px;margin:0 auto 12px auto;">Extract your QuickBooks Online data, load the master data, post one opening entry from your Trial Balance with every open invoice and bill, bring in the stock at the cut-off date, and compare Odoo with QuickBooks account by account before you go live.</p>
+    <p style="color:#B8C2E8;font-size:15px;line-height:1.5;max-width:820px;margin:0 auto;">For finance teams and Odoo partners who switch a company from QuickBooks Online to Odoo 18 at a cut-off date. It moves balances and open items, not the history of every transaction.</p>
+  </div>
 
-    <!-- 1. HERO -->
-    <div class="row justify-content-center text-center mb-5">
-      <div class="col-lg-9">
-        <span class="badge bg-primary mb-3">Compliance &middot; Odoo 19</span>
-        <h1 class="display-5 fw-bold mb-3">QuickBooks to Odoo 19 Accounting Migration Wizard for Odoo 19</h1>
-        <p class="lead text-muted mb-4">Wizard-driven QuickBooks to Odoo 19 migrations&mdash;OAuth or file upload, GL reconciliation, multi-run staging, and full audit trails.</p>
-        <img src="banner.png" class="img-fluid rounded shadow-sm" alt="QuickBooks to Odoo 19 Accounting Migration Wizard for Odoo 19 &mdash; native Odoo backend banner"/>
+  <div class="row" style="margin:-64px 12px 32px 12px;">
+    <div class="col-md-4" style="margin-bottom:16px;">
+      <div style="background-color:#ffffff;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;box-shadow:0 4px 14px rgba(14,20,36,0.10);">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">1. Extract</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Reads your QuickBooks Online company page by page, through FlexigoTech Cloud, into a staging area in Odoo (requires FlexigoTech Cloud subscription).</p>
+      </div>
+    </div>
+    <div class="col-md-4" style="margin-bottom:16px;">
+      <div style="background-color:#ffffff;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;box-shadow:0 4px 14px rgba(14,20,36,0.10);">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">2. Load</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Turns the staging into partners, products, accounts, payment terms, analytic accounts, one opening entry and the opening stock. Runs inside your Odoo.</p>
+      </div>
+    </div>
+    <div class="col-md-4" style="margin-bottom:16px;">
+      <div style="background-color:#ffffff;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;box-shadow:0 4px 14px rgba(14,20,36,0.10);">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">3. Reconcile</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Compares Odoo with QuickBooks account by account, open item by open item and item by item. A difference of more than 0.01 blocks Reconciled.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin:0 12px 32px 12px;">
+    <div class="col-md-6" style="margin-bottom:16px;">
+      <div style="background-color:#FBFAFF;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;">
+        <h2 style="font-size:20px;font-weight:700;color:#0E1424;margin:0 0 10px 0;">What you need</h2>
+        <ul style="font-size:14px;color:#3A4152;margin:0;padding-left:18px;">
+          <li style="margin-bottom:6px;">A QuickBooks Online company. QuickBooks Desktop is not read: the extraction uses Intuit's QuickBooks Online API.</li>
+          <li style="margin-bottom:6px;">Your own Intuit app, created in your Intuit Developer account: its client ID and secret are what connects (see the Intuit terms tab).</li>
+          <li style="margin-bottom:6px;">The FlexigoTech Migration Base module, installed with this one, and FlexigoTech Cloud, the free base module of the subscription.</li>
+          <li>For the extraction, the FlexigoTech Cloud trial or subscription (Settings &rarr; FlexigoTech Cloud).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-6" style="margin-bottom:16px;">
+      <div style="background-color:#ffffff;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;">
+        <h2 style="font-size:20px;font-weight:700;color:#0E1424;margin:0 0 10px 0;">What runs where</h2>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 8px 0;"><strong>FlexigoTech Cloud</strong> keeps the client secret of your Intuit app and the QuickBooks tokens encrypted, exchanges the authorization code, renews the access and passes each call of a new connection on to QuickBooks Online, keeping it only for the time needed to deliver it.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0;"><strong>Your Odoo</strong> keeps the staging, the mappings and everything loaded: the load, the opening entry, the stock and the reconciliation run in Odoo and do not need the subscription. What is already extracted or loaded stays in Odoo.</p>
+      </div>
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs nav-justified" role="tablist" style="margin:0 12px;border-bottom:2px solid #0E1424;">
+    <li class="nav-item" role="presentation"><a class="nav-link active" data-bs-toggle="tab" data-toggle="tab" href="#qbm-features" role="tab" style="font-weight:600;color:#0E1424;">Features</a></li>
+    <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" data-toggle="tab" href="#qbm-intuit" role="tab" style="font-weight:600;color:#0E1424;">Intuit terms</a></li>
+    <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" data-toggle="tab" href="#qbm-faqs" role="tab" style="font-weight:600;color:#0E1424;">FAQs</a></li>
+    <li class="nav-item" role="presentation"><a class="nav-link" data-bs-toggle="tab" data-toggle="tab" href="#qbm-support" role="tab" style="font-weight:600;color:#0E1424;">Support</a></li>
+  </ul>
+
+  <div class="tab-content" style="margin:0 12px 32px 12px;">
+
+    <div class="tab-pane active" id="qbm-features" role="tabpanel">
+      <div style="background-color:#FBFAFF;padding:20px;border-radius:0 0 10px 10px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Extraction from QuickBooks Online (requires FlexigoTech Cloud subscription)</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 8px 0;">Extract on a migration run reads, 1,000 records a page: accounts, tax codes, terms, classes, departments, customers, vendors, items, open invoices, open bills, every credit memo and vendor credit, and the Trial Balance to the day of the extraction, with the Inventory Valuation Summary at the same date. Everything goes into the migration staging of the project.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0;">If FlexigoTech Cloud stops answering or the service ends, the run pauses where it was and goes on by itself when it can. The staging is never deleted.</p>
+      </div>
+      <div style="background-color:#ffffff;padding:20px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Master data load</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 8px 0;">Load on a migration run creates the records in the company of the project, archived when they are inactive in QuickBooks. Loading again updates the same records and never creates again what you deleted.</p>
+        <ul style="font-size:14px;color:#3A4152;margin:0;padding-left:18px;">
+          <li style="margin-bottom:4px;">Accounts are matched to your chart by the mapping set of the project, else by the account number; a new account is created only when the mapping gives its code.</li>
+          <li style="margin-bottom:4px;">Customers and vendors become partners; inventory, non-inventory and service items become products, with their income and expense accounts once those are loaded.</li>
+          <li style="margin-bottom:4px;">Terms with due days become payment terms, with their early payment discount.</li>
+          <li style="margin-bottom:4px;">Classes and departments become analytic accounts in the plan of the dimension mapping.</li>
+          <li>A tax code is never created as a tax. Date-driven terms and unmapped accounts, classes and departments are listed in the run instead of being guessed.</li>
+        </ul>
+      </div>
+      <div style="background-color:#FBFAFF;padding:20px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">One opening entry from the Trial Balance</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 8px 0;">The Trial Balance becomes one posted opening entry at its end date, in the first general journal of the company: one line per account with its balance, and on the receivable and payable accounts one line per open invoice or bill, with its customer or vendor, its number, due date and open balance, in its own currency when it has another. You match those lines with the payments in Odoo.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0;">No invoice or bill is created, so no tax or income is counted twice. A Trial Balance that does not balance creates nothing, and loading again duplicates nothing.</p>
+      </div>
+      <div style="background-color:#ffffff;padding:20px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Credit memos and vendor credits</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Unapplied credit memos and vendor credits are open items of the opening entry too, with the opposite sign, their customer or vendor, and their own currency at their exchange rate, so the receivables and payables match QuickBooks. The fully applied ones give no line.</p>
+      </div>
+      <div style="background-color:#FBFAFF;padding:20px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Stock at the cut-off date</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 8px 0;">The Inventory Valuation Summary gives the quantity and the asset value of each inventory item. They go into the main warehouse of the company, on the products the items became, at the QuickBooks value. They come from a location of their own, "QuickBooks opening stock", without a valuation account, so no stock valuation entry is made: the inventory account keeps the balance of the opening entry.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0;">An item that is not loaded as a storable product, or is below zero, is listed and no stock is loaded. Loading again moves nothing twice.</p>
+      </div>
+      <div style="background-color:#ffffff;padding:20px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Reconciliation, account by account</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">After the load, Odoo's balance at the Trial Balance date is compared with QuickBooks' for every account, each receivable and payable account with its open items, and the stock item by item. The differences go to the reconciliation of the project, and a difference of more than 0.01 blocks Reconciled.</p>
+      </div>
+      <div style="background-color:#FBFAFF;padding:20px;border-radius:0 0 10px 10px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Connections and access</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Each QuickBooks connection and its staging stay in their company. Only members of the Migration Manager group manage connections. A copy of the database (neutralized) forgets the QuickBooks tokens, and uninstalling the module deletes the Intuit apps kept in FlexigoTech Cloud. Connections made with a version before 1.1.0 keep working as bought, directly from Odoo (Connect to QuickBooks and Test Connection); to extract, you create a new connection, which goes through FlexigoTech Cloud.</p>
       </div>
     </div>
 
-    <!-- 2. PROBLEM -->
-    <div class="row justify-content-center mb-5">
-      <div class="col-lg-9">
-        <h2 class="fw-bold mb-3">The problem buyers face today</h2>
-        <p>QuickBooks migrations are manual, slow, and error-prone. Teams copy GL data by hand into spreadsheets, lose audit trails in the process, and struggle to map QuickBooks accounts to Odoo&rsquo;s chart of accounts structure. Each cutover re-invents the wheel, leaving teams uncertain whether their data is complete and correct.</p>
+    <div class="tab-pane" id="qbm-intuit" role="tabpanel">
+      <div style="background-color:#FBFAFF;padding:20px;border-radius:0 0 10px 10px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">The Intuit app is yours</h3>
+        <ul style="font-size:14px;color:#3A4152;margin:0 0 16px 0;padding-left:18px;">
+          <li style="margin-bottom:6px;">You create the app in your own Intuit Developer account and accept the Intuit Developer Terms of Service as its owner. FlexigoTech Cloud calls QuickBooks Online with that app, for you.</li>
+          <li style="margin-bottom:6px;">Intuit shows the production keys of an app only after it approves the App Assessment Questionnaire, which asks, among other things, for the addresses of your license agreement and privacy policy, your domain and the regions where the app is hosted.</li>
+          <li style="margin-bottom:6px;">You do not need to publish the app on Intuit's app store: a private app works with its production keys.</li>
+          <li>Intuit's terms make the app owner responsible for the service providers that act for them, and do not allow the data to be used for general archiving or back-up. FlexigoTech Cloud passes the calls on and keeps them only for the time needed to deliver them.</li>
+        </ul>
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Intuit's limits and fees</h3>
+        <ul style="font-size:14px;color:#3A4152;margin:0 0 16px 0;padding-left:18px;">
+          <li style="margin-bottom:6px;">Where Intuit's App Partner Program applies (today the US, Canada except Quebec, the UK and Australia), every app starts on its free Builder tier: 500,000 read calls a month for the workspace where the app lives, counted again on the 1st of each month. Above that, Intuit blocks the read calls until the next month, unless you move to one of its paid tiers. Calls to the sandbox and to the OAuth endpoints are not counted.</li>
+          <li style="margin-bottom:6px;">Intuit allows 500 requests a minute and 10 a second per company, and 1,000 records per query; the extraction reads 1,000 records a page.</li>
+          <li>Intuit may change its fees at any time. What Intuit charges is between you and Intuit: the FlexigoTech Cloud subscription does not include it.</li>
+        </ul>
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">How it is tested</h3>
+        <p style="font-size:14px;color:#3A4152;margin:0;">We have not had access to an Intuit sandbox yet. The extraction, the load, the opening entry, the stock and the reconciliation are tested against a simulator that follows Intuit's official documentation and its official SDK. The names of the columns of the Inventory Valuation Summary (Qty and Asset Value) are not yet checked against a QuickBooks Online company. The test against a real QuickBooks Online company will be done when the sandbox is available.</p>
       </div>
     </div>
 
-    <!-- 3. SOLUTION -->
-    <div class="row justify-content-center mb-5">
-      <div class="col-lg-9">
-        <h2 class="fw-bold mb-3">How this wizard solves it</h2>
-        <p>This module connects to QuickBooks Online (secure OAuth) or Desktop (file upload), extracts GL, AR, AP, and inventory masters, and loads them into Odoo 19 with full reconciliation, audit trails, and GDPR compliance. Every record carries source provenance; every run is logged; cutover is controlled and reversible.</p>
+    <div class="tab-pane" id="qbm-faqs" role="tabpanel">
+      <div style="background-color:#ffffff;padding:20px;border:1px solid #E3E6F0;border-top:0;border-radius:0 0 10px 10px;">
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Which QuickBooks does it read?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">QuickBooks Online, through Intuit's API. The connection form still accepts the upload of a QuickBooks Desktop export, but it only checks the file: nothing is extracted from it.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">What needs the subscription, and what does not?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">The extraction from QuickBooks Online, and connecting a new connection, need the FlexigoTech Cloud trial or subscription. The load, the opening entry, the stock, the reconciliation and everything already extracted or loaded work in Odoo without it.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">An account, class or payment term is listed as unmapped. What do I do?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">For an account, add an Account Type value to the mapping set of the project: as source, the Id, number or name of the QuickBooks account; as target, the Odoo account, or the code of a new account, which the load then creates. Without a mapping, the account is matched by its number. Classes and departments go in the dimension mapping of the project: an analytic account, the plan to create it in, or Do Not Migrate. Date-driven payment terms are not created: set up that payment term in Odoo yourself. Then run Load again: it updates what is there and duplicates nothing.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Does it import my old invoices and transactions?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">No. It brings the balances at the cut-off date and the invoices, bills and credits that are still open, as lines of one opening entry. No invoice or bill is created, so no tax or income is counted twice. The history stays in QuickBooks.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">What happens if the subscription ends in the middle of an extraction?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">The run pauses where it was and nothing is deleted, in the staging or in Odoo. It goes on by itself when the service is back.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">I bought an earlier version. What changes?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">Your connections keep working as you bought them: Connect to QuickBooks and Test Connection from Odoo, with their tokens encrypted in Odoo. The extraction is new in 1.1.0 and goes through FlexigoTech Cloud, so it needs a new connection. To update, put the FlexigoTech Cloud module in the same addons path, restart and update this module (Apps &rarr; Upgrade); restarting without updating does not load it.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Does it work with several companies?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">Yes. Each migration project loads into its own company, and each QuickBooks connection and its staging stay in their company.</p>
+        <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Has it been tested with a real QuickBooks Online company?</h4>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Not yet: it is tested against a simulator that follows Intuit's official documentation and SDK (see the Intuit terms tab).</p>
       </div>
     </div>
 
-    <!-- 4. FEATURES (Bootstrap grid &mdash; survives style strip) -->
-    <h2 class="fw-bold text-center mb-4">Key features</h2>
-    <div class="row g-4 mb-5">
-      <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h3 class="card-title h5">OAuth &amp; File Upload</h3>
-            <p class="card-text">Connect QuickBooks Online securely, or upload QBX files from Desktop. No manual data exports or risky copy-paste.</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h3 class="card-title h5">GL Reconciliation</h3>
-            <p class="card-text">Trial balance, accounts receivable, accounts payable, and inventory are validated before go-live. Variance reports are signed off.</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h3 class="card-title h5">Full Lineage &amp; Audit</h3>
-            <p class="card-text">Every GL entry carries source account code, original amount, and exchange rate. Run logs are immutable; GDPR compliance built in.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. VIDEO WALKTHROUGH (3-lang <details> accordion &mdash; Apps Store-safe) -->
-    <h2 class="fw-bold text-center mb-4">Watch the 2-minute walkthrough</h2>
-    <div class="row justify-content-center mb-5">
-      <div class="col-lg-9">
-        <details open class="mb-2 p-2 border rounded">
-          <summary class="fw-semibold">English &mdash; 2-minute walkthrough</summary>
-          <video class="img-fluid rounded shadow-sm mt-2" controls preload="metadata" playsinline poster="walkthrough_poster.png">
-            <source src="walkthrough.en.mp4" type="video/mp4"/>
-            <track kind="subtitles" src="walkthrough.en.vtt" srclang="en" label="English" default/>
-          </video>
-        </details>
-        <details class="mb-2 p-2 border rounded">
-          <summary class="fw-semibold">Espa&ntilde;ol &mdash; walkthrough de 2 minutos</summary>
-          <video class="img-fluid rounded shadow-sm mt-2" controls preload="metadata" playsinline poster="walkthrough_poster.png">
-            <source src="walkthrough.es.mp4" type="video/mp4"/>
-            <track kind="subtitles" src="walkthrough.es.vtt" srclang="es" label="Espanol" default/>
-          </video>
-        </details>
-        <details class="mb-2 p-2 border rounded">
-          <summary class="fw-semibold">Deutsch &mdash; 2-Minuten-Rundgang</summary>
-          <video class="img-fluid rounded shadow-sm mt-2" controls preload="metadata" playsinline poster="walkthrough_poster.png">
-            <source src="walkthrough.de.mp4" type="video/mp4"/>
-            <track kind="subtitles" src="walkthrough.de.vtt" srclang="de" label="Deutsch" default/>
-          </video>
-        </details>
-      </div>
-    </div>
-
-    <!-- 6. SCREENSHOTS (real backend, Bootstrap grid) -->
-    <h2 class="fw-bold text-center mb-4">See it inside Odoo</h2>
-    <div class="row g-4 mb-5">
-      <div class="col-12">
-        <!-- GEN:GALLERY:BEGIN -->
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/00-overview.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Overview"/>
-          <figcaption class="figure-caption">1 &middot; Overview.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/02-qb-dimension-default-map.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Dimension Default Map"/>
-          <figcaption class="figure-caption">2 &middot; Qb Dimension Default Map.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/03-qb-mapping-default-value.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Mapping Default Value"/>
-          <figcaption class="figure-caption">3 &middot; Qb Mapping Default Value.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/04-qb-mapping-enhancer.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Mapping Enhancer"/>
-          <figcaption class="figure-caption">4 &middot; Qb Mapping Enhancer.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/05-qb-object-catalogue.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Object Catalogue"/>
-          <figcaption class="figure-caption">5 &middot; Qb Object Catalogue.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/06-qb-reconciliation-enhancer.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Reconciliation Enhancer"/>
-          <figcaption class="figure-caption">6 &middot; Qb Reconciliation Enhancer.</figcaption>
-        </figure>
-        <figure class="figure w-100">
-          <img src="screenshots-marketing/07-qb-staging.png" loading="lazy" class="figure-img img-fluid rounded border w-100" alt="Quickbooks To Odoo 19 Accounting Migration Wiza Qb Staging"/>
-          <figcaption class="figure-caption">7 &middot; Qb Staging.</figcaption>
-        </figure>
-        <!-- GEN:GALLERY:END -->
-      </div>
-    </div>
-
-    <!-- 7. AUDIENCE / COMPATIBILITY -->
-    <div class="row g-4 mb-5">
-      <div class="col-md-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h2 class="h4 fw-bold">Who it is for</h2>
-            <ul class="mb-0">
-              <li>Finance controllers and accounting managers</li>
-              <li>System integrators and Odoo partners</li>
-              <li>SMBs (10&ndash;200 employees) moving from QuickBooks to Odoo 19</li>
-              <li>CFO teams managing consolidations or multi-company rollups</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h2 class="h4 fw-bold">Compatibility</h2>
-            <p class="mb-0">Odoo 19 Community and Enterprise. No external SaaS required.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 8. PRICING -->
-    <div class="row justify-content-center mb-5">
-      <div class="col-md-6">
-        <div class="card text-center shadow-sm bg-primary text-white">
-          <div class="card-body">
-            <h2 class="h4 fw-bold text-white">Pricing</h2>
-            <p class="display-6 fw-bold mb-0">FREE</p>
-            <p class="mb-0">LGPL-3 open-source module</p>
-            <p style="font-size: 0.9rem; margin-top: 1rem; margin-bottom: 0;" class="text-white-50">Implementation service available at <a href="mailto:comercial@flexigobe.com" style="color: #ffffff; text-decoration: underline;">comercial@flexigobe.com</a></p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 9. FAQ (>=5 <details> phrased as search queries) -->
-    <h2 class="fw-bold text-center mb-4">Frequently asked questions</h2>
-    <div class="row justify-content-center mb-5">
-      <div class="col-lg-9">
-        <details class="mb-2 p-2 border rounded"><summary class="fw-semibold">How do I install this module?</summary><p class="mt-2 mb-0">Click &ldquo;Install&rdquo; in your Odoo App Store. The module is open-source (LGPL-3) and works on Odoo 19 Community and Enterprise. It depends on <code>flexigo_migration_base</code>, which will be installed automatically.</p></details>
-        <details class="mb-2 p-2 border rounded"><summary class="fw-semibold">Does it work on Odoo Community?</summary><p class="mt-2 mb-0">Yes. All core migration features (connection, extraction, mapping, validation, load, reconciliation) work on Community. Enterprise-only features like fixed asset migration are optional.</p></details>
-        <details class="mb-2 p-2 border rounded"><summary class="fw-semibold">Can I run multiple migrations?</summary><p class="mt-2 mb-0">Yes. The module supports incremental cutover: run migrations multiple times, staging data accumulates, and go-live triggers load. Rollback is trivial via the run log.</p></details>
-        <details class="mb-2 p-2 border rounded"><summary class="fw-semibold">Is my data kept confidential?</summary><p class="mt-2 mb-0">Yes. The module does not transmit your data to external services. QuickBooks credentials are encrypted with Fernet symmetric encryption and never logged in plaintext. Run logs are stored inside your Odoo database.</p></details>
-        <details class="mb-2 p-2 border rounded"><summary class="fw-semibold">What if I need help with the migration?</summary><p class="mt-2 mb-0">FlexigoTech offers paid implementation services including discovery, pilot runs, go-live cutover, and post-cutover support. <a href="mailto:comercial@flexigobe.com" style="color: #0066cc;">Request a quote: comercial@flexigobe.com</a>.</p></details>
-      </div>
-    </div>
-
-    <!-- 10. CTA -->
-    <div class="row justify-content-center text-center">
-      <div class="col-lg-8">
-        <div class="card shadow-sm bg-dark text-white">
-          <div class="card-body py-4">
-            <h2 class="fw-bold text-white">Ready to migrate from QuickBooks?</h2>
-            <p class="mb-3">This free, open-source module is your foundation. For expert guidance through discovery, pilot, and go-live, FlexigoTech provides professional implementation services.</p>
-            <a class="btn btn-light fw-semibold me-2 mb-2" href="https://apps.odoo.com/apps/modules/19.0/flexigo_quickbooks_to_odoo_19_accounting_migration_wiza">Install from Apps Store</a>
-            <a class="btn btn-light fw-semibold" href="mailto:comercial@flexigobe.com">Request Implementation Quote</a>
-          </div>
-        </div>
+    <div class="tab-pane" id="qbm-support" role="tabpanel">
+      <div style="background-color:#FBFAFF;padding:20px;border-radius:0 0 10px 10px;">
+        <h3 style="font-size:18px;font-weight:700;color:#0E1424;margin:0 0 8px 0;">Who helps with what</h3>
+        <ul style="font-size:14px;color:#3A4152;margin:0 0 12px 0;padding-left:18px;">
+          <li style="margin-bottom:6px;">FlexigoTech: this module, the FlexigoTech Migration Base and FlexigoTech Cloud. Configuration help and bug fixes are always provided to buyers.</li>
+          <li style="margin-bottom:6px;">Intuit: your QuickBooks Online company, your Intuit Developer account, the App Assessment Questionnaire and Intuit's fees.</li>
+          <li>The migration project itself (the mappings, the cut-off date, checking the reconciliation) is done by you or your Odoo partner.</li>
+        </ul>
+        <p style="font-size:14px;color:#3A4152;margin:0;">Write to <a href="mailto:comercial@flexigobe.com" style="color:#3B4BD8;">comercial@flexigobe.com</a>, with your Odoo version and the message of the migration run.</p>
       </div>
     </div>
 
   </div>
 </section>
+</details>
+<!-- fgt-privacy:start -->
+<details style="border:1px solid #E6E9F0;border-radius:8px;padding:12px 16px;margin:32px 0 0">
+<summary style="color:#0C0D14;font-weight:600">Privacy policy</summary>
+<section class="oe_container" id="fgt-privacy">
+  <div class="oe_spaced">
+    <div>
+      <h3>Privacy policy</h3>
+      <p>This is the part of our privacy policy that applies to whoever uses our Odoo modules and FlexigoTech Cloud. The complete policy, which also covers our website and our customer area, is available on request at comercial@flexigobe.com.</p>
+      <p>This English version is a translation for reference only. The Spanish text is the one that applies.</p>
+      <h4>1. Who processes your data</h4>
+      <p>Flexibles y Accesorios Gobe, S.L., which sells software under the FlexigoTech brand.</p>
+      <ul>
+        <li>Tax ID (NIF): B56727993.</li>
+        <li>Registered address: Calle Roger de Ll&uacute;ria 54, principal 1.&ordf; B, 08009 Barcelona (Spain).</li>
+        <li>Barcelona Commercial Registry, volume 49059, folio 216, section 8, sheet B-606144, entry 1.</li>
+        <li>For anything about your data: comercial@flexigobe.com or +34 616 809 504.</li>
+      </ul>
+      <p>We have not appointed a data protection officer because we are not required to (article 37 GDPR and article 34 LOPDGDD).</p>
+      <p>Atendyo, another product of this same company, has its own policy, published on its website, for its customers and for the businesses it writes to. This policy covers FlexigoTech's use of Atendyo as the chat on its own website.</p>
+      <h4>2. What data we process, why, on what legal basis and for how long</h4>
+      <p>When a retention period ends, we erase or anonymise the data. If a law requires us to keep it longer, we block it: it is set aside and used only to answer courts or public authorities while liability can still be claimed (article 32 LOPDGDD).</p>
+      <h5>2.3 What you accept and what you consent to</h5>
+      <table class="table table-sm">
+        <tr><th>Data</th><th>Legal basis</th><th>Retention</th></tr>
+        <tr><td>Which document you accepted or consented to (such as the terms of use or the subscription terms) or were informed of (this policy), its version and the SHA-256 hash of the text, the date, the IP address, the browser and where it happened (sign-up, purchase, new acceptance or preferences). Also when you withdraw a consent.</td><td>Legal obligation to be able to prove what you accepted or consented to (articles 5.2, 6.1.c and 7.1 GDPR).</td><td>While you have the account and then, blocked, for 5 years, the period for claims under a contract (article 1964.2 of the Spanish Civil Code).</td></tr>
+      </table>
+      <h5>2.9 If you write to us</h5>
+      <table class="table table-sm">
+        <tr><th>Data</th><th>Legal basis</th><th>Retention</th></tr>
+        <tr><td>What you tell us through the website forms, by email, by phone or on WhatsApp: name, company, email, phone, website, your message and your answers to the form.</td><td>Pre-contractual steps you ask for (article 6.1.b GDPR) and legitimate interest in answering you (article 6.1.f GDPR).</td><td>12 months from the last contact, unless it leads to a contract. In that case, the contract's period.</td></tr>
+      </table>
+      <p>The contact forms go through FormSubmit, which forwards them to us by email. If you write to us on WhatsApp, WhatsApp also processes that conversation under its own terms.</p>
+      <h5>2.15 Invoicing and accounting</h5>
+      <table class="table table-sm">
+        <tr><th>Data</th><th>Legal basis</th><th>Retention</th></tr>
+        <tr><td>The details on each invoice.</td><td>Legal obligation (article 6.1.c GDPR).</td><td>6 years (article 30 of the Spanish Commercial Code).</td></tr>
+      </table>
+      <p>We disclose them to the Spanish Tax Agency when the law requires it and to our tax and accounting advisers, who process them on our behalf.</p>
+      <h5>2.16 Your requests and complaints</h5>
+      <table class="table table-sm">
+        <tr><th>Data</th><th>Legal basis</th><th>Retention</th></tr>
+        <tr><td>What you ask for, any data we need to check and our answer.</td><td>Legal obligation to handle your rights and your complaints (article 6.1.c GDPR, article 12 GDPR and article 21 of the Spanish consumer protection act, TRLGDCU).</td><td>3 years from our answer.</td></tr>
+      </table>
+      <h5>2.18 FlexigoTech Cloud</h5>
+      <p>FlexigoTech Cloud is the service we provide from our servers to our Odoo modules, which is contracted by subscription. Depending on the module, it syncs with a platform, provides a cloud service or monitors the official sources the module depends on and alerts you of their changes and deadlines. Your Odoo sends nothing to the cloud until an administrator of your Odoo accepts it on the FlexigoTech Cloud screen. The subscription payment is processed by Stripe, which keeps your payment method for renewals. We do not see or store your card details.</p>
+      <table class="table table-sm">
+        <tr><th>Data</th><th>Legal basis</th><th>Retention</th></tr>
+        <tr><td>For each database that connects: the identifier (uuid) and address (URL) of the database, the Odoo version, the FlexigoTech modules installed, with their version, whether the database is a neutralised copy (staging or test), the company name and the email of the person who accepts, with the version of the accepted text and the date. If someone starts a trial from your Odoo, also their acceptance of the subscription terms and of the data processing agreement, with the version, the fingerprint of each text and the date, which we keep with your account and with the email with which the database was connected; we do not store the Odoo user who accepts. In connectors with a hub of ours that keeps the access of our integration, also what your Odoo sends to the hub when you connect the platform: the company name, a contact email (the company's or, if it has none, that of the user who connects), the address of the database and the language of that user. Afterwards, the date of its last connection.</td><td>For the database: pre-contractual measures and performance of the subscription contract (article 6.1.b GDPR). For the email of the person who accepts: if you contract as a professional, performance of the contract (article 6.1.b GDPR); if you accept on behalf of a company, our legitimate interest in maintaining the relationship with it (article 6.1.f GDPR and article 19 LOPDGDD).</td><td>As long as the database is linked to your account. If it is not linked to any, 12 months from its last connection. What is sent to the hub of a connector, while that connection lasts and, when it ends, 30 days at most. The proof of what was accepted follows section 2.3.</td></tr>
+        <tr><td>Your billing account and your subscriptions: company, VAT number, country and address, email of the account holder, whether you are a partner, and your customer and subscription identifiers in Stripe; for each subscription, the modules, tier, billing period, status and dates; the trials used; the reason you give us when you cancel, if you give one; and the service permits of each database, with the history of their changes and their cause.</td><td>Performance of the subscription contract (article 6.1.b GDPR) and accounting and tax obligations (article 6.1.c GDPR). The email of the account holder, if it belongs to a person who works for your company: our legitimate interest in maintaining the relationship with it (article 6.1.f GDPR and article 19 LOPDGDD).</td><td>As long as you have the account. If you delete it, the payment and subscription data that support your invoices stay blocked for 6 years (section 2.15).</td></tr>
+        <tr><td>Cloud access logs: IP address, date and time, requested address, database and result of each request, without tokens, keys or the content of the request. Those of the public page of the whistleblowing channel do not keep the IP address (section 10).</td><td>Legitimate interest in protecting the service and stopping abuse (article 6.1.f GDPR) and duty of security (article 32 GDPR).</td><td>12 months, the time some platforms, such as Amazon, require. Those of the hub of the Amazon connector are archived for 13 months, without buyer data, to meet that period with a margin.</td></tr>
+      </table>
+      <p>What the cloud processes so that the service works (the credentials of your platforms, the notifications and business data that pass through it, the metrics and errors your Odoo sends and the fingerprints of the records a module seals) we process on behalf of your company, as processors, under the FlexigoTech Cloud data processing agreement (section 10).</p>
+      <h4>3. Where the data comes from</h4>
+      <p>You give us almost all of it. Stripe gives us the payment result and the billing details you type on its page, and Scaleway and Brevo tell us whether an email was delivered. In FlexigoTech Cloud, your Odoo sends us the database details when an administrator of your Odoo accepts it, and Stripe tells us the status of your payments and your subscription.</p>
+      <h4>4. Who we share your data with</h4>
+      <p>We do not sell personal data or share it for other companies' advertising. We disclose it to public authorities and courts when a law requires it. These providers process it on our behalf (article 28 GDPR), each only for what is shown:</p>
+      <table class="table table-sm">
+        <tr><th>Provider</th><th>What for</th><th>Where</th></tr>
+        <tr><td>netcup GmbH</td><td>Servers for our website and its forms, the customer area, FlexigoTech Cloud (including its hosted AI, an open-weights model that runs on our own server) and the chat, their databases and their backups.</td><td>Germany</td></tr>
+        <tr><td>Stripe Payments Europe, Limited</td><td>Payments, subscriptions and invoices. Stripe also processes some data as a controller in its own right, to prevent fraud and meet its legal obligations.</td><td>Ireland; part of the processing in the United States</td></tr>
+        <tr><td>Scaleway SAS</td><td>Main sender of our emails, and reporting their delivery.</td><td>France</td></tr>
+        <tr><td>Sendinblue SAS (Brevo)</td><td>Internal notices to our team, and backup sender of our emails if Scaleway fails or its free monthly allowance runs out, and reporting their delivery.</td><td>France</td></tr>
+        <tr><td>GitHub, Inc.</td><td>Private repository with the log of orders, while we still use it.</td><td>United States</td></tr>
+        <tr><td>ImprovMX Incorporated</td><td>Forwards email sent to our FlexigoTech addresses to our mailbox.</td><td>United States</td></tr>
+        <tr><td>GoDaddy</td><td>Our mailbox, where we receive forms and enquiries.</td><td>United States</td></tr>
+        <tr><td>Calendly LLC</td><td>Video call bookings.</td><td>United States</td></tr>
+        <tr><td>Google Ireland Limited and Google LLC</td><td>Analytics and advertising, only with your permission. Fonts on the three Arabic pages of the website.</td><td>Ireland and United States</td></tr>
+        <tr><td>PostHog</td><td>Analytics, only with your permission.</td><td>European Union (PostHog's European cloud)</td></tr>
+        <tr><td>Supabase, Inc.</td><td>Old accounts of our website, until they are erased.</td><td>United States</td></tr>
+        <tr><td>Odoo S.A. (Odoo.sh)</td><td>Our Odoo instance, where the service that connects our Amazon connector to the seller's account runs (section 10).</td><td>Belgium, on Google Cloud servers; backups in France, the Netherlands and Sweden, with Google and OVH, and, until Odoo completes its transition, expected in the fourth quarter of 2026, one more in Canada</td></tr>
+        <tr><td>Our tax and accounting advisers</td><td>Accounting and taxes.</td><td>Spain</td></tr>
+      </table>
+      <p>Two other services receive data without a data processing agreement signed with us, because they do not offer one: FormSubmit, which receives what you write in the contact forms and forwards it to us by email, and jsDelivr, a file distribution network with servers in many countries that serves the icons on many pages of our website and sees your IP address. FormSubmit does not publish a privacy policy. If you would rather your enquiry did not go through FormSubmit, write to us directly at comercial@flexigobe.com.</p>
+      <h4>5. Transfers outside the European Economic Area</h4>
+      <p>Some of the providers in the table in section 4 process data in the United States. Each transfer has to rely on a GDPR safeguard: the adequacy decision on the EU-US Data Privacy Framework of 10 July 2023 (article 45 GDPR), if the provider is certified, or the European Commission's standard contractual clauses (article 46.2.c GDPR). Stripe (Stripe, LLC) and Cloudflare are certified under the Framework. Groq is not, and its safeguard is the standard contractual clauses. For GitHub, Calendly, Google, GoDaddy, ImprovMX, PostHog and Supabase we are checking which of the two safeguards applies to each. If you want to know or would like a copy, ask us. Odoo S.A. hosts our instance in the European Union; it may still keep a backup in Canada, which has an adequacy decision of the European Commission (article 45 GDPR), and give its affiliates outside the European Union limited and temporary access, under standard contractual clauses.</p>
+      <h4>6. Automated decisions</h4>
+      <p>We do not take decisions based solely on automated processing that have legal effects on you or affect you in a similar way (article 22 GDPR). The chat answers automatically, but it does not decide anything about you. The fraud checks Stripe applies to payments are Stripe's own. In FlexigoTech Cloud, when a trial ends or a payment remains unpaid, the service stops automatically, as the subscription terms say. If you think it is a mistake, write to us and a person reviews it.</p>
+      <h4>7. Your rights</h4>
+      <p>You can ask us for access to your data, its rectification or erasure, object to our processing it, ask us to restrict its use and take it with you in a machine-readable format (articles 15 to 22 GDPR). If you gave us your consent, you can withdraw it at any time, without affecting what we did before (article 7.3 GDPR).</p>
+      <p>In your account, in the Privacy section, you can download a copy of your data (a JSON file downloaded through a link that is valid for 7 days and only opens with your session signed in), and delete the account. For anything else, or if you have no account, write to comercial@flexigobe.com or by post to the address in section 1. Any other channel you use to ask us is also valid.</p>
+      <p>We will not ask for your ID card. If you write from the email of your account or your purchase, that is enough for us. Only if we have reasonable doubts about who you are will we ask for the minimum detail that lets us check (article 12.6 GDPR).</p>
+      <p>We answer within one month at most. If the request is complex or we receive many, we can extend that by two more months, and we would tell you within the first month (article 12.3 GDPR). Exercising your rights is free.</p>
+      <p>Some data cannot be erased while its legal retention period lasts, such as invoices. In that case we block it and tell you which data and until when. If you ask us to erase an order or download that is in the GitHub repository, we remove it from the log, but it may remain in the repository's history while we still use it; we will tell you what remains and until when.</p>
+      <p>If you think we have not handled your rights properly, you can complain to the Spanish Data Protection Agency (C/ Jorge Juan 6, 28001 Madrid).</p>
+      <h4>8. Security</h4>
+      <ul>
+        <li>All connections to our servers are encrypted (HTTPS).</li>
+        <li>Our servers are in Germany. The customer area has its own database, separate from those of our other products.</li>
+        <li>For passwords we store only a hash (Argon2). They must have at least 12 characters and cannot be among the most common ones.</li>
+        <li>Any account can turn on two-step verification, with an authenticator app and recovery codes. It is mandatory for staff who administer the area.</li>
+        <li>We limit sign-in, password recovery and sign-up attempts.</li>
+        <li>We email you when your password, your email or your two-step verification changes.</li>
+        <li>We make a daily backup of the customer area database. The copy that leaves the server is encrypted and is kept on a computer of ours in Spain.</li>
+        <li>What we erase may remain in the backups until they expire, at most after 90 days, both in those on our servers and in the encrypted copy we keep in Spain. In the hub of the Amazon connector, which runs on Odoo.sh, 3 months at most, because Odoo.sh keeps monthly backups for the last three months.</li>
+        <li>Version 1.4 of this policy said that what we erase also disappeared from the backups within 30 days at most. That was not accurate: the periods are the ones in this section.</li>
+        <li>The security measures of FlexigoTech Cloud are in Annex II of its data processing agreement.</li>
+      </ul>
+      <p>If we suffered a security breach, we would notify the Spanish Data Protection Agency within 72 hours when the law requires it, and the people affected if it poses a high risk to them (articles 33 and 34 GDPR).</p>
+      <h4>9. Minors</h4>
+      <p>Our website, our modules and FlexigoTech Cloud are aimed at businesses and professionals, not at children under 14 (article 7 LOPDGDD). You must be of legal age to open an account or buy.</p>
+      <h4>10. Data we process on behalf of our customers</h4>
+      <p>Our modules and connectors run inside each customer's Odoo. The data they handle (orders, invoices, customers) belongs to the customer, who is its controller, and stays in their installation. When a connector passes data through one of our servers, or when we provide support with access to a customer's Odoo, we process it on their behalf, only for that purpose and under the data processing agreement we sign with them (article 28 GDPR). If you are a customer of one of our customers, ask that company for your rights; if you write to us, we will pass your request on to them.</p>
+      <p>What FlexigoTech Cloud processes on behalf of our customers (the credentials of their platforms, the notifications and business data that pass through the cloud, and the metrics and errors their Odoo sends) is governed by the FlexigoTech Cloud data processing agreement, which forms part of the subscription terms. It sets out its sub-processors, its security measures and when the data is deleted.</p>
+      <p>If a company uses the hosted whistleblowing channel of our flexigo_whistleblowing module, the person who reports writes on a public page of FlexigoTech Cloud, and we process what they send on behalf of that company, which is the controller and informs the person who reports (Annex IV of the data processing agreement). Each report, attachment and message is sealed on arrival with the company's key, so that we cannot read it, and it is deleted when the company's Odoo collects it. For each report, its dates, a fingerprint of the follow-up code and the messages sealed for the person who reported remain until 183 days after its arrival, or until it is collected if that takes longer. We do not store the IP address of the person who reports, neither in the application nor in the logs of that page. If the company leaves the service, the page accepts reports for 90 days more, what is pending can be collected for another 90 days, and then it is deleted.</p>
+      <p>In the Klaviyo connector, contacts, orders and events go directly from the customer's Odoo to Klaviyo and do not pass through our servers. There is one exception, so that the customer keeps meeting its legal duties: while the sync is paused because the database has no service, the unsubscribes and the erasures (Article 17 GDPR) made in its Odoo reach Klaviyo through FlexigoTech Cloud. The email address, phone number or Klaviyo profile id of that person then passes through our servers only in transit, during that request, without being stored or logged. We process it on behalf of the customer, as a processor.</p>
+      <p>The authorisation that connects our connector to the seller's Amazon account goes through our Odoo instance on Odoo.sh.</p>
+      <p>For data our connector obtains from the Amazon Selling Partner API, we also commit to:</p>
+      <ul>
+        <li>using it only to manage and fulfil the seller's orders;</li>
+        <li>deleting buyers' personal data no later than 30 days after delivery, except the copy on a posted invoice, which the law requires us to keep;</li>
+        <li>encrypting it in transit and at rest and limiting access to those who need it;</li>
+        <li>reporting any security incident affecting Amazon data to Amazon within 24 hours of detecting it, and to the seller within the same period, so that, as controller, it can notify its supervisory authority where applicable (article 33 GDPR);</li>
+        <li>not sharing it with unauthorised third parties.</li>
+      </ul>
+      <h4>11. Changes to this policy</h4>
+      <p>Each version has a number and a date, and previous versions remain available in the customer area. If a change affects how we use your data, we will tell you by email or in your account before it applies.</p>
+      <p>Version 1.8. Date: 22-10-2026 (22 October 2026).</p>
+    </div>
+  </div>
+</section>
+</details>
+<!-- fgt-privacy:end -->

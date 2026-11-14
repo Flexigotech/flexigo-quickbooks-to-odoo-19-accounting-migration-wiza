@@ -1,1 +1,0 @@
-INFRASTRUCTURE-BLOCKED: Odoo instance failed to boot due to external module errors (HubSpot, SIRE). Screenshots will be captured in Cycle 3 upon Docker repair.

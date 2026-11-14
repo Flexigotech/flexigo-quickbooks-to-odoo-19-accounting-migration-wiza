@@ -11,6 +11,7 @@
                 <field name="name"/>
                 <field name="connection_type"/>
                 <field name="is_sandbox"/>
+                <field name="fgt_route"/>
             </list>
         </field>
     </record>
@@ -33,10 +34,16 @@
                             <field name="name"/>
                             <field name="connection_type"/>
                             <field name="is_sandbox"/>
+                            <field name="fgt_route"/>
                         </group>
                         <group invisible="connection_type != 'oauth'">
                             <field name="oauth_client_id"/>
-                            <field name="oauth_client_secret_encrypted" string="Client Secret" password="True"/>
+                            <field name="oauth_client_secret_encrypted" string="Client Secret" password="True"
+                                   invisible="fgt_route != 'direct'"/>
+                            <field name="fgt_consent" invisible="fgt_route == 'direct'"/>
+                            <field name="fgt_client_secret" password="True" invisible="fgt_route == 'direct'"/>
+                            <field name="fgt_saved_at" invisible="fgt_route == 'direct' or not fgt_saved_at"/>
+                            <field name="fgt_connected_on" invisible="fgt_route == 'direct' or not fgt_connected_on"/>
                             <field name="oauth_redirect_uri" widget="CopyClipboardChar"/>
                             <field name="realm_id" readonly="1"/>
                             <field name="minorversion"/>

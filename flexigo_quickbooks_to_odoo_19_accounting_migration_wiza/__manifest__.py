@@ -1,31 +1,24 @@
 # -*- coding: utf-8 -*-
 {
     'author': 'FlexigoTech',
-    'images': [
-        'static/description/banner.png',
-        'static/description/screenshots-marketing/00-overview.png',
-        'static/description/screenshots-marketing/02-qb-dimension-default-map.png',
-        'static/description/screenshots-marketing/03-qb-mapping-default-value.png',
-        'static/description/screenshots-marketing/04-qb-mapping-enhancer.png',
-        'static/description/screenshots-marketing/05-qb-object-catalogue.png',
-        'static/description/screenshots-marketing/06-qb-reconciliation-enhancer.png',
-        'static/description/screenshots-marketing/07-qb-staging.png',
-    ],
+    'images': ["static/description/fgt/cover.gif"],
     'support': 'comercial@flexigotech.com',
-    'name': 'QuickBooks to Odoo Migration Wizard',
-    'version': '18.0.1.0.5',
+    'name': 'QuickBooks Migration Odoo',
+    'version': '18.0.1.1.0',
     'category': 'Accounting/Data Migration',
     'license': 'OPL-1',
-    'price': 49,
+    'price': 9.0,
     'currency': 'EUR',
-    'summary': 'Wizard-driven toolkit for QuickBooks → Odoo 19 cutover migrations',
+    'summary': 'Move QuickBooks Online into Odoo 18 once, at a cut-off date. Needs FlexigoTech Cloud subscription (from 49 EUR/month, VAT excl.). Moves your QuickBooks Online books into Odoo 18 at a cut-off date: master data, one opening entry with the open items, stock and a reconciliation account by account.',
     'depends': [
+        'flexigotech_cloud',
         'flexigo_migration_base',
         'base',
         'account',
         'sale_management',
         'purchase',
         'stock',
+        'stock_account',
     ],
     'data': [
         'security/flexigo_quickbooks_security.xml',
@@ -35,20 +28,22 @@
         'views/qb_oauth_templates.xml',
         'views/qb_object_catalogue_views.xml',
     ],
+    'uninstall_hook': 'uninstall_hook',
     'application': True,
     'installable': True,
     'auto_install': False,
     'description': """
-QuickBooks to Odoo 19 Accounting Migration Wizard
+QuickBooks to Odoo 18 Accounting Migration Wizard
 =================================================
 A wizard-driven, auditable, idempotent toolkit for extracting accounting data from
-QuickBooks Online (via Intuit Accounting API) or QuickBooks Desktop (via export upload)
-and loading it into Odoo 19 with a repeatable, reconciled cutover process.
+QuickBooks Online (via the Intuit Accounting API) and loading it into Odoo 18 with a
+repeatable, reconciled cutover process.
 
-One-off purchase, no subscription. The actual migration is delivered as a paid
-FlexigoTech implementation service.
-
-For service enquiries: comercial@flexigobe.com
+New connections reach QuickBooks Online through FlexigoTech Cloud, which keeps
+the client ID and secret of your Intuit app and the QuickBooks tokens encrypted,
+and needs its trial or subscription (Settings > FlexigoTech Cloud). Without it
+nothing is sent, and nothing in Odoo is deleted. Connections made before 1.1.0
+keep working as bought, directly from Odoo.
     """,
     'external_dependencies': {
         'python': [
