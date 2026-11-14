@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import base64
+import csv
 import hashlib
 import json
 import logging
@@ -387,7 +388,12 @@ class QbConnection(models.Model):
         if not self.qbdt_file:
             raise UserError(_('Upload the IIF export of QuickBooks Desktop on this connection first (in QuickBooks '
                               'Desktop: File > Utilities > Export > Lists to IIF Files).'))
-        records, other = iif_records(decode(base64.b64decode(self.qbdt_file)))
+        try:
+            records, other = iif_records(decode(base64.b64decode(self.qbdt_file)))
+        except csv.Error as error:   # a picture, an archive or a PDF read as text
+            raise UserError(_('%(file)s cannot be read as an IIF export of QuickBooks Desktop (%(error)s): upload the '
+                              'file QuickBooks Desktop writes in File > Utilities > Export > Lists to IIF Files.',
+                              file=self.qbdt_filename or _('The file'), error=error)) from error
         if not any(records.values()):
             raise UserError(_('%(file)s has no account, class, customer, vendor or item list of an IIF export of '
                               'QuickBooks Desktop (File > Utilities > Export > Lists to IIF Files).',
@@ -1041,3 +1047,44 @@ class MigrationReconciliation(models.Model):
         self.sudo().write({'signed_off': True, 'signed_off_by': self.env.uid,
                            'signed_off_date': fields.Datetime.now()})
         return True
+
+    _QB_SIGN_OFF_FIELDS = {'signed_off', 'signed_off_by', 'signed_off_date'}
+
+    def _qb_check_sign_off_vals(self, vals_list, new=False):
+        # only Sign Off signs, as superuser after checking the reviewer: nobody signs in a reviewer's name (R-k 524);
+        # a new line may say it is not signed (the form sends the default)
+        if not self.env.su and any(name in vals and (vals[name] or not new)
+                                   for vals in vals_list for name in self._QB_SIGN_OFF_FIELDS):
+            raise AccessError(_('Only Sign Off, by a member of QuickBooks Migration / Reviewer, signs off the '
+                                'reconciliation.'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._qb_check_sign_off_vals(vals_list, new=True)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._qb_check_sign_off_vals([vals])
+        return super().write(vals)
+
+
+class MigrationStagingRecord(models.Model):
+    _inherit = 'migration.staging.record'
+
+    def unlink(self):
+        # the staging goes with Delete Staging of a loaded project (its checks, then as superuser), not row by row;
+        # qb.staging (its own table, Cola 259) inherits this class and keeps its delete
+        if self._name == 'migration.staging.record' and not self.env.su:
+            raise AccessError(_('Delete the staging with Delete Staging on the migration project, once it is loaded.'))
+        return super().unlink()
+
+
+class MigrationRecordLink(models.Model):
+    _inherit = 'migration.record.link'
+
+    def unlink(self):
+        # a link says what was loaded: without it, the next load creates that record again
+        if not self.env.su:
+            raise AccessError(_('A migration link says what was loaded into Odoo: without it, the next load would '
+                                'create that record twice.'))
+        return super().unlink()
