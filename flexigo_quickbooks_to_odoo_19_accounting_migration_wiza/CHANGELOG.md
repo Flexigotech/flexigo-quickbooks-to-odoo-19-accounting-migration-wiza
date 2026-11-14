@@ -1,5 +1,20 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 18.0.1.1.1 (unreleased)
+- QuickBooks Desktop: a File Upload connection takes the IIF export of the lists (File > Utilities > Export > Lists to
+  IIF Files). Test Connection says how many accounts, classes, customers, vendors and items Extract reads from it,
+  which lists of the file it does not read, or why the file cannot be read; Extract and Load bring them like those of
+  QuickBooks Online. The opening entry, the open items and the stock come only from QuickBooks Online.
+- A 429 or 5xx of QuickBooks Online is asked again up to 3 times (Retry-After, at most 10 seconds) before the run
+  stops as Failed, which keeps what it extracted and goes on from that page.
+- A connection made before 1.1.0 renews its access token once with the refresh token when QuickBooks answers 401,
+  stores the new tokens encrypted and asks again; if Intuit does not renew it, it says to connect again.
+- QuickBooks Migration / Reviewer signs off the reconciliation (Sign Off); other internal users only read it.
+- Migration > Staging shows what Extract brought before Load writes anything, and a Migration Manager
+  deletes the staging of a loaded project (Delete Staging), with the personal data of customers and vendors in it.
+- The README says only what the module does (it promised a dry-run mode, delta sync, a Refresh Token button, PII
+  redaction and a rollback that do not exist).
+
 ## 18.0.1.1.0 (2026-11-14)
 - An account the user maps follows the mapping: changing the mapping after a load (or mapping again an account deleted
   in Odoo after a load) is the account of the opening of the next load. The opening entry and the stock at the cut-off
