@@ -1,6 +1,6 @@
 # QuickBooks to Odoo Migration Wizard — User Guide
 
-Wizard-driven toolkit for QuickBooks → Odoo 19 cutover migrations
+Wizard-driven toolkit for QuickBooks → Odoo 17 cutover migrations
 
 ## Installation
 1. Download the module and add it to your Odoo addons path (or deploy via Odoo.sh).

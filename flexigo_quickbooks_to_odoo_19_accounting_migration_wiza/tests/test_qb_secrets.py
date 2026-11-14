@@ -5,8 +5,11 @@ failed and the value was stored as it came; the OAuth callback wrote the tokens 
 could read, change and delete the connection."""
 from unittest.mock import MagicMock, patch
 
+from odoo import fields
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
+
+from .test_fgt_cloud import _direct
 
 SECRETS = {
     'oauth_client_secret_encrypted': 'client-secret',
@@ -20,8 +23,9 @@ class TestQbSecrets(TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.connection = self.env['qb.connection'].create({
-            'name': 'QB secrets', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'})
+        # 1.1.0: these are the connections bought before FlexigoTech Cloud ('direct'), whose secrets stay here
+        self.connection = _direct(self.env['qb.connection'].create({
+            'name': 'QB secrets', 'connection_type': 'oauth', 'oauth_client_id': 'client-id'}))
         self.connection.write(SECRETS)
         self.env.invalidate_all()
 
@@ -105,3 +109,19 @@ class TestQbSecrets(TransactionCase):
             self.assertEqual(self.connection._get_oauth_client_secret(), 'client-secret')
             self.connection.write({'oauth_access_token_encrypted': 'with-the-variable'})
             self.assertEqual(self.connection._get_oauth_access_token(), 'with-the-variable')
+
+    def test_08_a_manager_cannot_give_an_administrator_only_field_when_creating(self):
+        """Odoo 17/18 do not check the groups of the fields in create() (19 does): a Migration Manager who is not an
+        administrator cannot give a secret or the FlexigoTech Cloud marks when creating a connection, not even through
+        a default_ key of the context (fgt_saved_at would let Connect skip the administrator who saves the Intuit app);
+        without them the connection is created, through FlexigoTech Cloud."""
+        manager = new_test_user(self.env, login='qb-create-manager',
+                                groups='base.group_user,flexigo_migration_base.group_migration_manager')
+        Connection = self.env['qb.connection'].with_user(manager)
+        now = fields.Datetime.now()
+        for vals, context in (({'fgt_saved_at': now}, {}), ({'fgt_connected_on': now}, {}),
+                              ({'fgt_client_secret': 'client-secret'}, {}), ({}, {'default_fgt_saved_at': now})):
+            with self.subTest(vals=vals, context=context), self.assertRaises(AccessError):
+                Connection.with_context(**context).create(dict(vals, name='QB by a manager', connection_type='oauth'))
+        connection = Connection.create({'name': 'QB by a manager', 'connection_type': 'oauth', 'fgt_consent': True})
+        self.assertEqual(connection.fgt_route, 'cloud')

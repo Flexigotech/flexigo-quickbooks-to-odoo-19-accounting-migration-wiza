@@ -8,14 +8,16 @@ from urllib.parse import urlencode
 import requests
 
 from odoo import fields, http
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.http import request
 from odoo.tools import consteq
+
+from ..models.qb_connection import INTUIT_TOKEN_URL
 
 _logger = logging.getLogger(__name__)
 
 # Intuit's discovery documents (production and sandbox): the same endpoints for both; sandbox is decided by the app keys.
 INTUIT_AUTHORIZE_URL = 'https://appcenter.intuit.com/connect/oauth2'
-INTUIT_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 MODULE = 'flexigo_quickbooks_to_odoo_19_accounting_migration_wiza'
 
 
@@ -70,17 +72,25 @@ class QuickBooksOAuthController(http.Controller):
             return self._error('connection_not_found', 'The QuickBooks connection of this authorization no longer exists.')
         connection._check_can_manage()  # the client secret goes to Intuit below
         try:
-            response = requests.post(
-                INTUIT_TOKEN_URL,
-                auth=(connection.oauth_client_id, connection._get_oauth_client_secret()),
-                data={'grant_type': 'authorization_code', 'code': code,
-                      'redirect_uri': connection._get_oauth_redirect_uri()},
-                headers={'Accept': 'application/json'},
-                timeout=30,
-            )
+            response = connection._qbo_send('POST', INTUIT_TOKEN_URL, data={
+                'grant_type': 'authorization_code', 'code': code, 'redirect_uri': connection._get_oauth_redirect_uri()})
         except requests.RequestException as exc:
             _logger.warning("QuickBooks OAuth: token exchange failed: %s", type(exc).__name__)
             return self._error('token_exchange_failed', 'Odoo could not reach QuickBooks. Try again in a moment.')
+        except (UserError, RedirectWarning) as exc:
+            if connection.fgt_route != 'cloud':
+                raise
+            # FlexigoTech Cloud: no service, or the relay refused; nothing was exchanged
+            return self._error('flexigotech_cloud', str(exc.args[0]))
+        if connection.fgt_route == 'cloud':
+            # the relay exchanged the code and keeps the tokens: none comes to Odoo
+            if response.status_code != 204:
+                return self._error('token_exchange_failed', 'QuickBooks refused the authorization code (HTTP %s).'
+                                   % response.status_code)
+            connection.write({'realm_id': realm_id, 'is_validated': False})
+            connection.sudo().write({'fgt_connected_on': fields.Datetime.now()})  # admin-only field
+            _logger.info("QuickBooks OAuth: authorized through FlexigoTech Cloud for connection %s", connection.id)
+            return request.redirect('/web#id=%d&model=qb.connection&view_type=form' % connection.id)
         if response.status_code != 200:
             try:
                 description = response.json().get('error_description') or response.json().get('error')

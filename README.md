@@ -1,8 +1,8 @@
 # flexigo_quickbooks_to_odoo_19_accounting_migration_wiza
 
-Wizard-driven toolkit for QuickBooks → Odoo 19 cutover migrations
+Wizard-driven toolkit for QuickBooks → Odoo 17 cutover migrations
 
-**Version:** 17.0.1.0.0
+**Version:** 17.0.1.1.0
 **Target Odoo:** 17.0
 **License:** OPL-1
 **Author:** FlexigoTech ([flexigotech.com](https://flexigotech.com))
