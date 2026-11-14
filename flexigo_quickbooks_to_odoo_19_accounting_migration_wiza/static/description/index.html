@@ -190,7 +190,7 @@
       <div style="background-color:#FBFAFF;border:1px solid #E3E6F0;border-radius:10px;padding:20px;height:100%;">
         <h2 style="font-size:20px;font-weight:700;color:#0E1424;margin:0 0 10px 0;">What you need</h2>
         <ul style="font-size:14px;color:#3A4152;margin:0;padding-left:18px;">
-          <li style="margin-bottom:6px;">A QuickBooks Online company. QuickBooks Desktop is not read: the extraction uses Intuit's QuickBooks Online API.</li>
+          <li style="margin-bottom:6px;">A QuickBooks Online company. From QuickBooks Desktop, only its lists are read, from an IIF export.</li>
           <li style="margin-bottom:6px;">Your own Intuit app, created in your Intuit Developer account: its client ID and secret are what connects (see the Intuit terms tab).</li>
           <li style="margin-bottom:6px;">The FlexigoTech Migration Base module, installed with this one, and FlexigoTech Cloud, the free base module of the subscription.</li>
           <li>For the extraction, the FlexigoTech Cloud trial or subscription (Settings &rarr; FlexigoTech Cloud).</li>
@@ -279,9 +279,9 @@
     <div class="tab-pane" id="qbm-faqs" role="tabpanel">
       <div style="background-color:#ffffff;padding:20px;border:1px solid #E3E6F0;border-top:0;border-radius:0 0 10px 10px;">
         <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Which QuickBooks does it read?</h4>
-        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">QuickBooks Online, through Intuit's API. The connection form still accepts the upload of a QuickBooks Desktop export, but it only checks the file: nothing is extracted from it.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">QuickBooks Online, through Intuit's API: everything on this page. From QuickBooks Desktop, the IIF export of its lists (File &rarr; Utilities &rarr; Export &rarr; Lists to IIF Files) uploaded on a File Upload connection: Test Connection says what it holds, and Extract and Load bring its accounts, classes, customers, vendors and items like those of QuickBooks Online. The opening entry, the open items and the stock come only from QuickBooks Online.</p>
         <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">What needs the subscription, and what does not?</h4>
-        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">The extraction from QuickBooks Online, and connecting a new connection, need the FlexigoTech Cloud trial or subscription. The load, the opening entry, the stock, the reconciliation and everything already extracted or loaded work in Odoo without it.</p>
+        <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">The extraction, from QuickBooks Online or a Desktop export, and connecting a new connection, need the FlexigoTech Cloud trial or subscription. The load, the opening entry, the stock, the reconciliation and everything already extracted or loaded work in Odoo without it.</p>
         <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">An account, class or payment term is listed as unmapped. What do I do?</h4>
         <p style="font-size:14px;color:#3A4152;margin:0 0 14px 0;">For an account, add an Account Type value to the mapping set of the project: as source, the Id, number or name of the QuickBooks account; as target, the Odoo account, or the code of a new account, which the load then creates. Without a mapping, the account is matched by its number. Classes and departments go in the dimension mapping of the project: an analytic account, the plan to create it in, or Do Not Migrate. Date-driven payment terms are not created: set up that payment term in Odoo yourself. Then run Load again: it updates what is there and duplicates nothing.</p>
         <h4 style="font-size:16px;font-weight:700;color:#0E1424;margin:0 0 4px 0;">Does it import my old invoices and transactions?</h4>

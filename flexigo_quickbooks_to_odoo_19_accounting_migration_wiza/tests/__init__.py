@@ -9,3 +9,4 @@ from . import test_qb_load
 from . import test_qb_opening
 from . import test_qb_stock
 from . import test_seguridad_rpc
+from . import test_qb100

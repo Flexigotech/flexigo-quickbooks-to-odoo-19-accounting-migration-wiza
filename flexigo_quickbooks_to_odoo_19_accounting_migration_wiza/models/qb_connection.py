@@ -5,9 +5,12 @@ import json
 import logging
 import os
 import requests
+import time as clock
 from datetime import datetime, time, timedelta
 from odoo import Command, models, fields, api, _
-from odoo.exceptions import RedirectWarning, UserError
+from odoo.exceptions import AccessError, RedirectWarning, UserError
+
+from ..lib.qbdt_export_parser import IIF_LISTS, decode, iif_records
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +46,10 @@ TRIAL_BALANCE = 'custom'
 INVENTORY_REPORT = 'InventoryValuationSummary'
 OPENING_STOCK = 'QuickBooks opening stock'
 QBO_PAGE = 1000
+# A 429 (throttled) or 5xx of Intuit is asked again up to QBO_RETRIES times, waiting what its Retry-After says or 2, 4
+# and 8 seconds, never more than QBO_RETRY_WAIT: then the run fails where it was and Extract goes on from that page.
+QBO_RETRIES = 3
+QBO_RETRY_WAIT = 10
 # BW step 4b-2a, the type of an account the user creates: Intuit's AccountType (AccountTypeEnum, and the two
 # AccountSubType values Odoo has a type of its own for) → account_type of Odoo. Intuit's schema:
 # github.com/intuit/QuickBooks-V3-Java-SDK, ipp-v3-java-data/src/main/xsd/Finance.xsd (AccountTypeEnum,
@@ -96,6 +103,15 @@ def _report_rows(report):
     for row in rows:   # the rows of a section are added to the list being walked
         rows += (row.get('Rows') or {}).get('Row', [])
     return [row['ColData'] for row in rows if (row.get('ColData') or [{}])[0].get('id')]
+
+
+def _retry_wait(response, attempt):
+    """Seconds before asking again: the Retry-After of the answer (in seconds), else 2, 4, 8…, at most QBO_RETRY_WAIT."""
+    try:
+        wait = float((response.headers or {}).get('Retry-After'))
+    except (TypeError, ValueError):
+        wait = 2.0 ** (attempt + 1)
+    return min(max(wait, 0.0), QBO_RETRY_WAIT)
 
 
 def _fernet(env):
@@ -203,26 +219,10 @@ class QbConnection(models.Model):
         default=5,
         help='Maximum retry attempts on HTTP 429'
     )
-    # FR-003: QBDT export upload profile
-    export_format = fields.Selection(
-        [('iif', 'IIF'), ('csv', 'CSV'), ('qbxml', 'qbXML')],
-        string='Export Format'
-    )
-    attached_file_ids = fields.One2many(
-        'ir.attachment',
-        'res_id',
-        domain=[('res_model', '=', 'qb.connection')],
-        string='Uploaded Export Files'
-    )
-    validation_status = fields.Selection(
-        [('pending', 'Pending'), ('valid', 'Valid'), ('invalid', 'Invalid')],
-        string='Validation Status',
-        default='pending'
-    )
-    detected_record_counts = fields.Json(
-        string='Detected Record Counts',
-        help='JSON with counts per entity type detected in upload'
-    )
+    # QuickBooks Desktop: the IIF export of its lists, uploaded on a File Upload connection (lib/qbdt_export_parser.py)
+    qbdt_file = fields.Binary(string='QuickBooks Desktop export (IIF)', attachment=True, copy=False,
+                              help='In QuickBooks Desktop: File > Utilities > Export > Lists to IIF Files.')
+    qbdt_filename = fields.Char(string='File name', copy=False)
 
     # Where Intuit sends the user back: register this exact URL in the Intuit app (Redirect URIs)
     oauth_redirect_uri = fields.Char(string='Redirect URI', compute='_compute_oauth_redirect_uri')
@@ -327,8 +327,16 @@ class QbConnection(models.Model):
     def _qbo_send_direct(self, method, path, **kwargs):
         if path == INTUIT_TOKEN_URL:
             return requests.post(path, auth=(self.oauth_client_id, self._get_oauth_client_secret()), **kwargs)
-        kwargs['headers']['Authorization'] = 'Bearer %s' % self._get_oauth_access_token()
-        return getattr(requests, method.lower())('%s/%s' % (QBO_HOSTS[bool(self.is_sandbox)], path), **kwargs)
+        def send():
+            headers = dict(kwargs['headers'], Authorization='Bearer %s' % self._get_oauth_access_token())
+            return getattr(requests, method.lower())('%s/%s' % (QBO_HOSTS[bool(self.is_sandbox)], path),
+                                                     **dict(kwargs, headers=headers))
+        response = send()
+        if response.status_code == 401 and self.sudo().oauth_refresh_token_encrypted:
+            # Intuit's access token lasts an hour: renew it once with the refresh token and ask again
+            self.refresh_access_token()
+            response = send()
+        return response
 
     def _qbo_send_cloud(self, method, path, **kwargs):
         if not self.fgt_consent:   # withdrawn after saving: nothing goes out (kb_conector_pasarela_pausas §13)
@@ -356,6 +364,9 @@ class QbConnection(models.Model):
         """BW plan §2.4: the extraction only goes through FlexigoTech Cloud. A connection bought before keeps what it
         bought, and is told so before anything is called or queued."""
         for connection in self:
+            if connection.connection_type == 'upload':
+                connection._qbdt_records()   # says why the file cannot be read
+                continue
             if connection.fgt_route != 'cloud':
                 raise UserError(_('This QuickBooks connection was made before FlexigoTech Cloud: it keeps working as '
                                   'bought (Connect to QuickBooks and Test Connection), but the extraction goes through '
@@ -365,7 +376,23 @@ class QbConnection(models.Model):
                 raise UserError(_('Connect this QuickBooks connection with Intuit first (Connect to QuickBooks).'))
 
     def _migration_object_types(self):
+        if self.connection_type == 'upload':
+            return list(IIF_LISTS.values())
         return [*QBO_ENTITIES, TRIAL_BALANCE]
+
+    def _qbdt_records(self):
+        """The lists of the uploaded QuickBooks Desktop export as QuickBooks Online payloads, and the other lists of the
+        file (not read); a UserError says why the file cannot be read."""
+        self.ensure_one()
+        if not self.qbdt_file:
+            raise UserError(_('Upload the IIF export of QuickBooks Desktop on this connection first (in QuickBooks '
+                              'Desktop: File > Utilities > Export > Lists to IIF Files).'))
+        records, other = iif_records(decode(base64.b64decode(self.qbdt_file)))
+        if not any(records.values()):
+            raise UserError(_('%(file)s has no account, class, customer, vendor or item list of an IIF export of '
+                              'QuickBooks Desktop (File > Utilities > Export > Lists to IIF Files).',
+                              file=self.qbdt_filename or _('The file')))
+        return records, other
 
     def _migration_extract_page(self, object_type, cursor):
         """One page for the engine: the query of the entity from STARTPOSITION cursor (1 the first time) until a page
@@ -373,6 +400,10 @@ class QbConnection(models.Model):
         A refusal of FlexigoTech Cloud goes up as it is: the engine pauses."""
         self.ensure_one()
         self._qb_check_extract()
+        start = cursor or 1
+        if self.connection_type == 'upload':
+            rows = self._qbdt_records()[0][object_type][start - 1:start - 1 + QBO_PAGE]
+            return rows, (start + QBO_PAGE if len(rows) == QBO_PAGE else None)
         if object_type == TRIAL_BALANCE:
             day = fields.Date.to_string(fields.Date.context_today(self))
             # the date of each report has its own name: end_date, and report_date for the inventory (Reports.cs of
@@ -380,7 +411,6 @@ class QbConnection(models.Model):
             return [self._qbo_get('reports/TrialBalance', {'end_date': day}),
                     self._qbo_get('reports/' + INVENTORY_REPORT, {'report_date': day})], None
         entity, where, _name, _code = QBO_ENTITIES[object_type]
-        start = cursor or 1
         query = 'SELECT * FROM %s%s STARTPOSITION %d MAXRESULTS %d' % (
             entity, where and ' WHERE ' + where, start, QBO_PAGE)
         # Intuit leaves the entity out of QueryResponse when there are no rows
@@ -388,9 +418,14 @@ class QbConnection(models.Model):
         return rows, (start + QBO_PAGE if len(rows) == QBO_PAGE else None)
 
     def _qbo_get(self, path, params):
-        """GET v3/company/<realm>/<path> with the minor version of the connection: Intuit's JSON, or UserError."""
-        response = self._qbo_send('GET', 'v3/company/%s/%s' % (self.realm_id, path),
-                                  params=dict(params, minorversion=self.minorversion or '75'))
+        """GET v3/company/<realm>/<path> with the minor version of the connection: Intuit's JSON, or UserError. A 429 or
+        5xx is asked again (QBO_RETRIES) before it fails."""
+        for attempt in range(QBO_RETRIES + 1):
+            response = self._qbo_send('GET', 'v3/company/%s/%s' % (self.realm_id, path),
+                                      params=dict(params, minorversion=self.minorversion or '75'))
+            if attempt == QBO_RETRIES or response.status_code != 429 and response.status_code < 500:
+                break
+            clock.sleep(_retry_wait(response, attempt))
         if response.status_code != 200:
             raise UserError(_('QuickBooks Online answered HTTP %(status)s to %(path)s.', status=response.status_code,
                               path=path))
@@ -878,6 +913,10 @@ class QbConnection(models.Model):
                 company_name = data.get('CompanyInfo', {}).get('CompanyName', 'Unknown')
                 self.is_validated = True
                 self.validation_message = f"Connection successful. Company: {company_name}, RealmId: {self.realm_id}"
+            elif response.status_code == 401:
+                self.is_validated = False
+                self.validation_message = _('Connection failed: QuickBooks refused the access of this connection '
+                                            '(HTTP 401). Connect it again with Connect to QuickBooks Online.')
             else:
                 self.is_validated = False
                 self.validation_message = f"Connection failed: HTTP {response.status_code}"
@@ -886,8 +925,9 @@ class QbConnection(models.Model):
             if self.fgt_route == 'cloud' and isinstance(e, (UserError, RedirectWarning)):
                 raise   # FlexigoTech Cloud: no service or consent, or it refused; the button says so
             self.is_validated = False
-            # FR-004: Never log secrets
-            self.validation_message = f"Connection failed: {str(e)[:100]}"
+            # FR-004: Never log secrets (our own messages carry none)
+            self.validation_message = "Connection failed: %s" % (
+                e.args[0] if isinstance(e, UserError) else str(e)[:100])
         
         return {
             'type': 'ir.actions.client',
@@ -900,23 +940,20 @@ class QbConnection(models.Model):
         }
 
     def _test_qbdt_upload(self):
-        """FR-005: Validate uploaded QBDT export structure"""
-        if not self.attached_file_ids:
+        """The uploaded QuickBooks Desktop export: what Extract reads from it, or why it cannot be read."""
+        try:
+            records, other = self._qbdt_records()
+            labels = {'account': _('accounts'), 'class': _('classes'), 'customer': _('customers'),
+                      'vendor': _('vendors'), 'item': _('items')}
+            self.is_validated = True
+            self.validation_message = _('Extract reads %s.', ', '.join(
+                '%d %s' % (len(rows), labels[object_type]) for object_type, rows in records.items()))
+            if other:
+                self.validation_message += ' ' + _('Not read: %s.', ', '.join(
+                    '%s (%d)' % (name, count) for name, count in sorted(other.items())))
+        except UserError as error:
             self.is_validated = False
-            self.validation_message = "No files uploaded"
-        else:
-            # FR-052: Validate file format and structure
-            valid, counts = self._validate_upload_structure()
-            if valid:
-                self.is_validated = True
-                self.validation_status = 'valid'
-                self.detected_record_counts = json.dumps(counts)
-                self.validation_message = f"Valid upload. Detected: {counts}"
-            else:
-                self.is_validated = False
-                self.validation_status = 'invalid'
-                self.validation_message = "Invalid upload structure"
-        
+            self.validation_message = error.args[0]
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -926,20 +963,6 @@ class QbConnection(models.Model):
                 'type': 'success' if self.is_validated else 'danger',
             }
         }
-
-    def _validate_upload_structure(self):
-        """FR-052: Validate QBDT export format and structure"""
-        counts = {}
-        # Basic validation - real implementation would parse IIF/CSV/qbXML
-        for attachment in self.attached_file_ids:
-            if self.export_format == 'iif':
-                # Validate IIF structure
-                counts['files'] = len(self.attached_file_ids)
-            elif self.export_format == 'csv':
-                counts['csv_files'] = len(self.attached_file_ids)
-            elif self.export_format == 'qbxml':
-                counts['qbxml_files'] = len(self.attached_file_ids)
-        return True, counts
 
     # FR-002: Refresh token handling with rotation
     @api.private
@@ -951,23 +974,28 @@ class QbConnection(models.Model):
         if not self.sudo().oauth_refresh_token_encrypted:
             raise UserError(_("No refresh token available"))
 
-        # FR-002: Atomic update of both tokens
+        # FR-002: Atomic update of both tokens. Intuit's token endpoint, grant_type refresh_token: it answers a new
+        # access token (expires_in) and a refresh token (x_refresh_token_expires_in) that replaces the one sent
+        reconnect = _('Connect it again with Connect to QuickBooks Online.')
         try:
             response = self._qbo_send('POST', INTUIT_TOKEN_URL, data={
                 'grant_type': 'refresh_token', 'refresh_token': self._get_oauth_refresh_token()})
-
-            if response.status_code == 200:
-                data = response.json()
-                # write() encrypts them
-                self.sudo().write({'oauth_access_token_encrypted': data['access_token'],
-                                   'oauth_refresh_token_encrypted': data['refresh_token']})
-                # Intuit returns expires_in in seconds
-                expiry = datetime.now() + timedelta(seconds=data.get('expires_in', 3600))
-                self.oauth_refresh_token_expiry = expiry
-            else:
-                raise UserError(_("Token refresh failed: HTTP %s") % response.status_code)
-        except Exception as e:
-            raise UserError(_("Token refresh error: %s") % str(e)[:100])
+        except requests.RequestException as e:
+            raise UserError(_('Odoo could not reach QuickBooks to renew the access (%s). Try again in a moment.',
+                              type(e).__name__)) from None
+        try:
+            data = response.json() if response.status_code == 200 else {}
+            vals = {'oauth_access_token_encrypted': data['access_token'],
+                    'oauth_refresh_token_encrypted': data['refresh_token']}
+            if data.get('x_refresh_token_expires_in'):
+                vals['oauth_refresh_token_expiry'] = fields.Datetime.now() + timedelta(
+                    seconds=int(data['x_refresh_token_expires_in']))
+        except (ValueError, KeyError, TypeError, OverflowError):
+            raise UserError(_('QuickBooks did not renew the access of this connection (HTTP %(status)s): its '
+                              'authorization ended or was revoked. %(reconnect)s', status=response.status_code,
+                              reconnect=reconnect)) from None
+        self.sudo().write(vals)   # write() encrypts the tokens
+        return True
 
 
 class MigrationRun(models.Model):
@@ -979,3 +1007,37 @@ class MigrationRun(models.Model):
         if run_type == 'extract':
             for run in self.filtered(lambda r: r.source_ref._name == 'qb.connection'):
                 run.source_ref._qb_check_extract()
+
+class MigrationProject(models.Model):
+    _inherit = 'migration.project'
+
+    def action_qb_delete_staging(self):
+        """Delete the staging of a loaded project (button, Migration Managers): the records as QuickBooks gave them, with
+        the names, emails and phones of customers and vendors. What was loaded into Odoo stays, and so do the links
+        that keep loading again from creating anything twice. Extract fills the staging again."""
+        if not self.env.user.has_group('flexigo_migration_base.group_migration_manager'):
+            raise AccessError(_('Only members of the Migration Manager group delete the staging of a project.'))
+        self.check_access('read')
+        for project in self:
+            if project.status not in ('loaded', 'reconciled', 'live'):
+                raise UserError(_('Delete the staging of %s once it is loaded: Load reads it.', project.name))
+            if self.env['migration.run'].search_count([('project_id', '=', project.id),
+                                                       ('state', 'in', ('queued', 'running', 'paused'))]):
+                raise UserError(_('A run of %s is still going on: wait until it ends.', project.name))
+        self.env['migration.staging.record'].sudo().search([('project_id', 'in', self.ids)]).unlink()
+        return True
+
+
+class MigrationReconciliation(models.Model):
+    _inherit = 'migration.reconciliation'
+
+    def action_qb_sign_off(self):
+        """Sign off reconciliation lines (button): members of QuickBooks Migration / Reviewer, with their name and the
+        time; the other internal users only read them."""
+        if not self.env.user.has_group(
+                'flexigo_quickbooks_to_odoo_19_accounting_migration_wiza.group_migration_reviewer'):
+            raise AccessError(_('Only members of QuickBooks Migration / Reviewer sign off the reconciliation.'))
+        self.check_access('read')
+        self.sudo().write({'signed_off': True, 'signed_off_by': self.env.uid,
+                           'signed_off_date': fields.Datetime.now()})
+        return True
