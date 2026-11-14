@@ -1,5 +1,5 @@
 =====================================
-QuickBooks to Odoo 19 Migration Wizard
+QuickBooks to Odoo 20 Migration Wizard
 =====================================
 
 **Module:** ``flexigo_quickbooks_to_odoo_19_accounting_migration_wiza``
@@ -12,7 +12,7 @@ Overview
 
 A wizard-driven, auditable, idempotent toolkit for extracting accounting data from
 QuickBooks Online (via Intuit Accounting API) or QuickBooks Desktop (via export upload)
-and loading it into Odoo 19 with a repeatable, reconciled cutover process.
+and loading it into Odoo 20 with a repeatable, reconciled cutover process.
 
 New QuickBooks Online connections go through FlexigoTech Cloud, which keeps the client ID and secret of your
 Intuit app and the QuickBooks tokens encrypted and needs its trial or subscription (Settings > FlexigoTech Cloud).
@@ -36,8 +36,8 @@ Key Features
 Use Cases
 =========
 
-- **QuickBooks Desktop → Odoo 19:** Migrate from legacy on-premise software
-- **QuickBooks Online → Odoo 19:** Consolidate cloud-to-cloud cutover
+- **QuickBooks Desktop → Odoo 20:** Migrate from legacy on-premise software
+- **QuickBooks Online → Odoo 20:** Consolidate cloud-to-cloud cutover
 - **Multi-entity migration:** Handle multi-currency and multi-company scenarios
 - **Audit-ready data load:** Full traceability and reversibility for financial control
 
@@ -50,8 +50,8 @@ Supported QuickBooks Versions
 Supported Odoo Versions
 =======================
 
-- Odoo 19 Community Edition
-- Odoo 19 Enterprise Edition
+- Odoo 20 Community Edition
+- Odoo 20 Enterprise Edition
 
 Supported Export Formats
 ========================

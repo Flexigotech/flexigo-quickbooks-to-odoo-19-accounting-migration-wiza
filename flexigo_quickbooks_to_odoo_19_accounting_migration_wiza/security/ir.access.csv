@@ -1,0 +1,18 @@
+id,name,model_id,group_id/id,operation,domain
+access_qb_connection_user,QuickBooks Connection User,qb.connection,base.group_user,r,
+access_qb_connection_manager,QuickBooks Connection Manager,qb.connection,flexigo_migration_base.group_migration_manager,crud,
+access_qb_object_catalogue_user,QB Object Catalogue User,qb.object.catalogue,base.group_user,r,
+access_qb_object_catalogue_manager,QB Object Catalogue Manager,qb.object.catalogue,flexigo_migration_base.group_migration_manager,crud,
+access_qb_staging_user,QB Staging User,qb.staging,base.group_user,r,
+access_qb_staging_manager,QB Staging Manager,qb.staging,flexigo_migration_base.group_migration_manager,crud,
+access_qb_mapping_enhancer_user,QB Mapping Enhancer User,qb.mapping.enhancer,base.group_user,r,
+access_qb_mapping_enhancer_manager,QB Mapping Enhancer Manager,qb.mapping.enhancer,flexigo_migration_base.group_migration_manager,crud,
+access_qb_mapping_default_value_user,QB Mapping Default Value User,qb.mapping.default.value,base.group_user,r,
+access_qb_mapping_default_value_manager,QB Mapping Default Value Manager,qb.mapping.default.value,flexigo_migration_base.group_migration_manager,crud,
+access_qb_dimension_default_map_user,QB Dimension Default Map User,qb.dimension.default.map,base.group_user,r,
+access_qb_dimension_default_map_manager,QB Dimension Default Map Manager,qb.dimension.default.map,flexigo_migration_base.group_migration_manager,crud,
+access_qb_reconciliation_enhancer_user,qb.reconciliation.enhancer.user,qb.reconciliation.enhancer,base.group_user,crud,
+access_qb_scoping_summary_user,qb.scoping.summary.user,qb.scoping.summary,base.group_user,crud,
+access_qb_scoping_wizard_user,qb.scoping.wizard.user,qb.scoping.wizard,base.group_user,crud,
+rule_qb_connection_company,QuickBooks Connection: multi-company,qb.connection,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"
+rule_qb_staging_company,QuickBooks Staging: multi-company,qb.staging,,crud,"[('project_id.company_id', 'in', company_ids)]"

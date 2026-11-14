@@ -4,7 +4,7 @@
     <!-- FR-035: Access control - internal users read, migration managers full access -->
     <!-- FR-036: GDPR data retention & archive (historical records, PII erasure) -->
     <!-- FR-037: Historical archive for audit trail -->
-    <!-- FR-038: Security groups using Odoo 19 res.groups.privilege pattern -->
+    <!-- FR-038: Security groups using Odoo 20 res.groups.privilege pattern -->
     <!-- FR-039: QuickBooks-specific security groups and record rules -->
     <!-- FR-040: Multi-company isolation via record rules -->
     <!-- FR-041: Class dimension mapping -->
@@ -29,18 +29,7 @@
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
-    <!-- FR-040: each QuickBooks connection and staging row stays in its company (the base's rules are for
-         migration.connection and migration.staging.record, other tables); global, as Odoo's company rules -->
-    <record id="rule_qb_connection_company" model="ir.rule">
-        <field name="name">QuickBooks Connection: multi-company</field>
-        <field name="model_id" ref="model_qb_connection"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
-
-    <record id="rule_qb_staging_company" model="ir.rule">
-        <field name="name">QuickBooks Staging: multi-company</field>
-        <field name="model_id" ref="model_qb_staging"/>
-        <field name="domain_force">[('project_id.company_id', 'in', company_ids)]</field>
-    </record>
+    <!-- FR-040: each QuickBooks connection and staging row stays in its company: in Odoo 20 those rules are the rows
+         without a group of security/ir.access.csv (rule_qb_connection_company, rule_qb_staging_company) -->
 
 </odoo>
