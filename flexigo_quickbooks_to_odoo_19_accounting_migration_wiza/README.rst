@@ -84,7 +84,10 @@ Migrating
    the opening entry and the stock only once. What cannot be loaded (an unmapped account, class or department, a
    date-driven payment term) is listed in the run instead of being guessed. A tax code is never created as a tax.
 5. **Reconcile**: the reconciliation of the project shows QuickBooks against Odoo; a difference of more than 0.01
-   blocks the Reconciled status. Members of QuickBooks Migration / Reviewer sign off each line with Sign Off.
+   blocks the Reconciled status. Members of QuickBooks Migration / Reviewer sign off each line with Sign Off. If a
+   signed figure changes afterwards (someone edits the amounts, the tolerance or the account of the line, or a new
+   load brings other amounts), the signature is taken off and the line has to be signed again; a duplicated line is
+   not signed.
 6. **Delete the staging**: once the project is loaded, a Migration Manager can press Delete Staging on the project.
    It deletes the records as QuickBooks gave them, with the names, emails and phones of customers and vendors; what
    was loaded into Odoo stays, and loading again still creates nothing twice. Extract fills it again.
