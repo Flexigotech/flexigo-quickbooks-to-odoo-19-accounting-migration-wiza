@@ -241,5 +241,7 @@ class TestQbOauthGuards(HttpCase):
         with self.assertRaisesRegex(UserError, 'administrator'):
             no_secret.with_user(self.manager).action_connect_qbo()
         arch = etree.fromstring(self.env['qb.connection'].get_view(view_type='form')['arch'])
-        self.assertEqual(arch.xpath("//button[@name='action_test_connection']")[0].get('invisible'),
+        # Test Connection checks the QuickBooks Online access and, on a File Upload connection, the Desktop export
+        self.assertFalse(arch.xpath("//button[@name='action_test_connection']")[0].get('invisible'))
+        self.assertEqual(arch.xpath("//button[@name='action_connect_qbo']")[0].get('invisible'),
                          "connection_type != 'oauth'")

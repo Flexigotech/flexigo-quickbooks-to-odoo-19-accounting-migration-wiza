@@ -1,244 +1,130 @@
-=====================================
-QuickBooks to Odoo 20 Migration Wizard
-=====================================
+====================================
+QuickBooks Migration to Odoo 20
+====================================
 
 **Module:** ``flexigo_quickbooks_to_odoo_19_accounting_migration_wiza``
 **License:** OPL-1
-**Status:** Production Ready
 **Author:** FlexigoTech
 
-Overview
-========
-
-A wizard-driven, auditable, idempotent toolkit for extracting accounting data from
-QuickBooks Online (via Intuit Accounting API) or QuickBooks Desktop (via export upload)
-and loading it into Odoo 20 with a repeatable, reconciled cutover process.
-
-New QuickBooks Online connections go through FlexigoTech Cloud, which keeps the client ID and secret of your
-Intuit app and the QuickBooks tokens encrypted and needs its trial or subscription (Settings > FlexigoTech Cloud).
-Without it nothing is sent and nothing in Odoo is deleted. Connections made before 1.1.0 keep working as bought,
-directly from Odoo.
-
-Key Features
+What it does
 ============
 
-- **Dual-path connectivity:** QBO OAuth 2.0 API or QBDT export file upload
-- **Secure credential storage:** Fernet encryption; only the administrator reads the credentials
-- **Rate-limited extraction:** Configurable concurrency with exponential backoff retry
-- **Idempotent loading:** Re-runnable without creating duplicates via source ID tracking
-- **Staged validation:** Dry-run mode with detailed error reporting before commit
-- **Reconciliation pack:** Trial balance, A/R aging, A/P aging, inventory reports
-- **Cutover runbook:** Freeze timestamp, delta sync, go/no-go gate, safe rollback
-- **Immutable audit trail:** Append-only run log with per-record lineage
-- **PII data governance:** Redactable historical archive for GDPR compliance
-- **Multi-company isolation:** Company-scoped access controls
+It moves your QuickBooks books into Odoo 20 once, at a cut-off date. It is a migration, not a synchronization: it
+does not keep QuickBooks and Odoo in step after the move, and it does not bring changes made afterwards.
 
-Use Cases
-=========
+From **QuickBooks Online** (Intuit's Accounting API) it brings:
 
-- **QuickBooks Desktop → Odoo 20:** Migrate from legacy on-premise software
-- **QuickBooks Online → Odoo 20:** Consolidate cloud-to-cloud cutover
-- **Multi-entity migration:** Handle multi-currency and multi-company scenarios
-- **Audit-ready data load:** Full traceability and reversibility for financial control
+- accounts, payment terms, classes, departments, customers, vendors and items (tax codes are read into the staging
+  but never created as taxes);
+- the Trial Balance at the day of the extraction, which becomes one posted opening entry, with one line per open
+  invoice, bill, credit memo and vendor credit on the receivable and payable accounts;
+- the stock of the Inventory Valuation Summary at the same date, into the main warehouse;
+- a reconciliation of Odoo against QuickBooks, account by account, receivables and payables by open item, and stock
+  item by item.
 
-Supported QuickBooks Versions
-=============================
+From **QuickBooks Desktop** it reads the IIF export of the lists (in QuickBooks Desktop: File > Utilities > Export >
+Lists to IIF Files): accounts, classes, customers and vendors (name, email and phone) and items. The opening entry,
+the open items and the stock come only from QuickBooks Online; other lists and transactions in the file are not
+read.
 
-- QuickBooks Online 2024 (via Intuit Accounting API)
-- QuickBooks Desktop 2020-2024 (via export upload)
+Old invoices, bills and payments are not imported: the history stays in QuickBooks.
 
-Supported Odoo Versions
-=======================
+Requirements
+============
 
-- Odoo 20 Community Edition
-- Odoo 20 Enterprise Edition
+- Odoo 20, Community or Enterprise, with the FlexigoTech Migration Base module and FlexigoTech Cloud (installed with
+  this one).
+- For QuickBooks Online: your own Intuit app (client ID and secret), created in your Intuit Developer account.
+- The extraction and connecting a new QuickBooks Online connection need the FlexigoTech Cloud trial or subscription
+  (Settings > FlexigoTech Cloud). The load, the opening entry, the stock, the reconciliation and everything already
+  extracted or loaded work without it.
 
-Supported Export Formats
+Installation and upgrade
 ========================
 
-1. **IIF** (Intuit Interchange Format) — Richest fidelity, widest compatibility
-2. **qbXML** — Structured format, SDK exports
-3. **CSV** — Fallback for manual exports
+Install it from the Odoo App Store. Coming from a version before 1.1.0: put ``flexigotech_cloud`` in the same addons
+path, restart and update FlexigoTech Migration Base (Apps > FlexigoTech Migration Base > Upgrade, or
+``-u flexigo_migration_base``), which updates this module too; restarting without updating does not load it.
 
-Installation
-============
+Connections
+===========
 
-1. Install the module via the Odoo App Store or direct upload. Coming from a version before 1.1.0: put
-   ``flexigotech_cloud`` in the same addons path, restart and update the module (Apps > Upgrade, or
-   ``-u flexigo_quickbooks_to_odoo_19_accounting_migration_wiza``); restarting without updating does not load it.
-2. Enable the QuickBooks Migration Wizard from the Apps menu
-3. Configure your Intuit OAuth credentials or prepare QBDT export files
-4. Create a migration project and follow the wizard
+Migration > QuickBooks Connections. Only members of the Migration Manager group create or change connections.
 
-Configuration
-==============
+**QuickBooks Online** (type OAuth): enter the client ID of your Intuit app. An administrator (Settings) ticks the
+consent and enters the client secret: both go to FlexigoTech Cloud, which keeps them and the QuickBooks tokens
+encrypted; Odoo keeps only the client ID. Add the Redirect URI shown on the connection to your Intuit app, then press
+Connect to QuickBooks Online and Test Connection.
 
-**Environment Variables:**
+Connections made before 1.1.0 keep working as bought, directly from Odoo, with their secret and tokens encrypted in
+Odoo (``MIGRATION_ENCRYPTION_KEY`` when it is a valid Fernet key, else a key derived from the database secret). When
+QuickBooks answers that their access token expired (HTTP 401), Odoo renews it once with the refresh token at Intuit's
+token endpoint, stores the new tokens encrypted and asks again; if Intuit does not renew it, the message says to
+connect again with Connect to QuickBooks Online. To extract, create a new connection: it goes through FlexigoTech
+Cloud.
 
-- ``MIGRATION_ENCRYPTION_KEY`` — optional Fernet key for credential storage; without it, or if it is not a valid
-  Fernet key, the key is derived from the database secret
+**QuickBooks Desktop** (type File Upload): upload the IIF export of the lists and press Test Connection. It says how
+many accounts, classes, customers, vendors and items Extract will read, which lists of the file it does not read, or
+why the file cannot be read.
 
-**Settings (via Odoo config):**
-
-- ``qbdt_max_upload_size_mb`` — Max QBDT upload size (default: 200 MB)
-- ``qb_attachment_max_size_mb`` — Max attachment size (default: 25 MB)
-- ``qb_attachment_max_total_mb`` — Max total attachments per run (default: 500 MB)
-
-**OAuth Setup (for QBO users):**
-
-1. Create an Intuit Developer account at https://developer.intuit.com
-2. Create an application and obtain Client ID + Client Secret
-3. In the module, create a connection profile of type OAuth with the Client ID and the Client Secret (only
-   administrators see and set the secret)
-4. Add the "Redirect URI" shown in the connection (``<your Odoo URL>/qb/oauth/callback``) to the Redirect URIs of
-   your Intuit application
-5. Click "Connect to QuickBooks Online", sign in to Intuit and choose the company; then "Test Connection"
-
-Only members of the Migration Manager group can create or change connections: an administrator needs that group
-too.
-
-**QBDT Setup (for Desktop users):**
-
-1. Export your QuickBooks Desktop data (File → Utilities → Export)
-2. Choose the format (IIF, CSV, or qbXML)
-3. Upload the export file via the module's upload interface
-4. Validate the upload structure via "Test Connection"
-
-Usage
-=====
-
-**Basic Workflow:**
-
-1. **Create Project:** Name, source type, target Odoo company
-2. **Connect:** Configure OAuth (QBO) or upload (QBDT)
-3. **Extract:** Retrieve data from QuickBooks (with resumable checkpoints)
-4. **Map:** Configure field and value transformations
-5. **Validate:** Dry-run to detect errors before loading
-6. **Load:** Execute idempotent batch load with lineage tracking
-7. **Reconcile:** Compare balances and aging reports side-by-side
-8. **Cutover:** Freeze QuickBooks, perform delta sync, go-live
-9. **Archive:** Immutable historical record for audit/GDPR compliance
-
-**Resumability:**
-
-All operations support interruption and resumption. Extraction cursors and load batch
-positions are persisted, allowing safe stop/restart without data loss or duplication.
-
-**Dry-Run Mode:**
-
-Validate your mapping and loading strategy without modifying the Odoo database. Useful
-for testing before the production cutover.
-
-**Delta Sync:**
-
-After initial load, extract only changed records since the freeze timestamp. Sync
-deletions detected via QuickBooks CDC (Change Data Capture) endpoint.
-
-Security
-========
-
-**Credential Protection:**
-
-- OAuth tokens, refresh tokens, and API secrets are encrypted via Fernet (AES-128)
-- Encryption key: ``MIGRATION_ENCRYPTION_KEY`` when it is a valid Fernet key, otherwise derived from the database
-  secret (only administrators read it)
-- Credentials are never logged, tracked in chatter, or exposed in UI
-
-**Access Control:**
-
-- Migration Manager group: Full CRUD on all migration resources
-- Other internal users: read only on the QuickBooks catalogue, staging rows, mappings and Class/Location maps
-- Migration Reviewer group: Read on projects/results, sign-off on reconciliation
-- Record rules enforce company isolation
-
-**Audit & Compliance:**
-
-- Immutable run log captures every extraction, transformation, and load operation
-- Per-record lineage ties each Odoo record to its source QuickBooks ID
-- Historical archive supports GDPR data subject access requests (DSAR)
-- PII redaction workflow preserves financial data while removing sensitive personal fields
-
-Data Flow
+Migrating
 =========
 
-```
-QuickBooks ──→ Staging Layer ──→ Validation ──→ Mapping ──→ Loader ──→ Odoo Target
-    │                 │              │             │           │
-    │                 │              │             │           └─ Upserts on QB ID
-    │                 │              │             └─ Value mappings
-    │                 │              └─ Dry-run (no commit)
-    │                 └─ Staged per source ID + raw payload
-    └─ QBO API or QBDT export upload
-```
+1. **Project** (Migration > Migration Projects): its company is where everything is loaded.
+2. **Extract** (a migration run of type Extract, with the connection): the records go into the staging of the
+   project, 1,000 a page, as QuickBooks gives them. Nothing is written in your accounting yet: look at the staging
+   (Migration > Staging) and set your mappings before loading. This is the check before
+   the load; there is no other dry-run mode.
+3. **Mappings** (the mapping set of the project): accounts by an Account Type value (source: the Id, number or name
+   of the QuickBooks account; target: an Odoo account, or the code of a new account) or else by account number;
+   classes and departments by the dimension mapping (an analytic account, the plan to create it in, or Do Not
+   Migrate).
+4. **Load** (a migration run of type Load): creates the records in the company of the project, archived when they are
+   inactive in QuickBooks. Loading again updates the same records, never creates again what you deleted, and posts
+   the opening entry and the stock only once. What cannot be loaded (an unmapped account, class or department, a
+   date-driven payment term) is listed in the run instead of being guessed. A tax code is never created as a tax.
+5. **Reconcile**: the reconciliation of the project shows QuickBooks against Odoo; a difference of more than 0.01
+   blocks the Reconciled status. Members of QuickBooks Migration / Reviewer sign off each line with Sign Off.
+6. **Delete the staging**: once the project is loaded, a Migration Manager can press Delete Staging on the project.
+   It deletes the records as QuickBooks gave them, with the names, emails and phones of customers and vendors; what
+   was loaded into Odoo stays, and loading again still creates nothing twice. Extract fills it again.
 
-Reconciliation
-==============
+Interruptions
+=============
 
-Post-load reconciliation pack includes:
+- If FlexigoTech Cloud stops answering or the service ends, the run pauses where it was and goes on by itself when
+  it can. The staging is never deleted by it.
+- If QuickBooks Online answers that too many requests were sent (HTTP 429) or has a server error (5xx), the page is
+  asked again up to 3 times, waiting what QuickBooks says in Retry-After (at most 10 seconds) or else 2, 4 and 8
+  seconds. If it still fails, the run stops as Failed with the answer of QuickBooks, keeps what it extracted, and
+  Extract goes on from that page.
+- Any other error of QuickBooks (such as a 401 when its authorization was withdrawn) stops the run as Failed in the
+  same way.
 
-- **Trial Balance:** QuickBooks TB vs Odoo GL, with materiality tolerance
-- **A/R Aging:** Aged receivables detail, tieout by due date bucket
-- **A/P Aging:** Aged payables detail, tieout by due date bucket
-- **Inventory Valuation:** Summary comparison (caveat: QB costing ≠ Odoo costing without re-valuation)
-- **Multi-currency:** Dual-currency reporting for FX-revalued items
-- **Sign-off workflow:** Approval gate before cutover to production
+Access
+======
 
-Known Limitations
+- Migration Manager: manages the QuickBooks connections and deletes the staging of a loaded project. Creating
+  projects, runs and mapping sets follows the rights of the FlexigoTech Migration Base module.
+- QuickBooks Migration / Reviewer: signs off the reconciliation.
+- Other internal users: read the QuickBooks catalogue, the staging, the mappings and the reconciliation.
+- Each connection, its staging and each project stay in their company. A copy of the database (neutralized) forgets
+  the QuickBooks tokens, and uninstalling the module deletes the Intuit apps kept in FlexigoTech Cloud.
+
+Known limitations
 =================
 
-1. **Inventory Costing:** QB FIFO/Weighted Average costs may differ from Odoo after load. Recommendation: perform post-migration revaluation via Odoo stock moves.
+- It is tested against a simulator that follows Intuit's documentation and SDK, not yet against a real QuickBooks
+  Online company.
+- The Trial Balance and the Inventory Valuation Summary must be in the currency of the company.
+- From QuickBooks Desktop only the lists named above are read.
 
-2. **Unmatched Dimensions:** QuickBooks Classes or Locations without Odoo analytic accounts will be flagged and optionally skipped.
+Support
+=======
 
-3. **Custom Fields:** QB custom fields are migrated as-is; Odoo custom field schema must be pre-configured.
-
-4. **Attachments:** Large attachments (>25 MB) are streamed in chunks; network interruption may require re-upload.
-
-5. **RTL Languages:** Reconciliation pack templates do not support RTL/BIDI rendering. Flagged for future expansion to Arabic/Hebrew markets.
-
-Troubleshooting
-===============
-
-**OAuth Token Expired:**
-
-Use the "Refresh Token" action on the connection profile to obtain a new access token.
-
-**Extraction Stalled:**
-
-Check the run log for HTTP 429 (rate limit) errors. Reduce concurrency cap and retry.
-
-**Validation Errors:**
-
-Review the validation CSV export for field-by-field error details. Common issues:
-- Unmapped dimensions (Classes/Locations)
-- Duplicate account numbers
-- Missing required fields (e.g., account type for GL accounts)
-
-**Rollback:**
-
-Use the "Rollback to Checkpoint" action to revert the load to the pre-migration state.
-Rollback is safe only if no subsequent transactions were posted in Odoo.
-
-Support & Services
-==================
-
-For migration planning, configuration, and implementation support:
-
-👉 `FlexigoTech Services <https://flexigotech.com/services>`__
-
-Free module documentation: `FlexigoTech Docs <https://docs.flexigotech.com>`__
+comercial@flexigobe.com
 
 License
 =======
 
-This module is licensed under the Odoo Proprietary License v1.0 (**OPL-1**). See LICENSE file for details.
-
-Changelog
-=========
-
-**1.0.0 (2026-06-14)**
-
-- Initial release
-- Support for QBO Online API and Desktop export
-- Complete cutover workflow with reconciliation and rollback
-- Encrypted credential storage and immutable audit trail
+Odoo Proprietary License v1.0 (OPL-1). The changes of each version are in CHANGELOG.md.
