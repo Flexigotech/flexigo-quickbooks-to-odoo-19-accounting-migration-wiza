@@ -1085,9 +1085,29 @@ class MigrationReconciliation(models.Model):
         self._qb_check_sign_off_vals(vals_list, new=True)
         return super().create(vals_list)
 
+    # a duplicate is a new line nobody signed (it would otherwise carry the reviewer's signature into create)
+    signed_off = fields.Boolean(copy=False)
+    signed_off_by = fields.Many2one(copy=False)
+    signed_off_date = fields.Datetime(copy=False)
+
+    # what the reviewer signs: the line, its amounts and what decides whether they match
+    _QB_SIGNED_FIGURES = ('project_id', 'reconciliation_type', 'account_code', 'source_amount', 'target_amount',
+                          'tolerance', 'variance', 'within_tolerance', 'is_blocking')
+
     def write(self, vals):
         self._qb_check_sign_off_vals([vals])
-        return super().write(vals)
+        figures = [name for name in self._QB_SIGNED_FIGURES if name in vals]
+        signed = self.filtered('signed_off') if figures else self.browse()
+        before = {line.id: [line[name] for name in figures] for line in signed}
+        result = super().write(vals)
+        # a signed figure that changes (an edit, or a new load with other amounts) takes the signature off: the
+        # reviewer signs again what is there now (Cola 524, delta of the R-k)
+        changed = signed.filtered(lambda line: [line[name] for name in figures] != before[line.id])
+        if changed:
+            _logger.info('Reconciliation lines %s: a signed figure changed (%s), signature taken off', changed.ids,
+                         ', '.join(figures))
+            changed.sudo().write({'signed_off': False, 'signed_off_by': False, 'signed_off_date': False})
+        return result
 
 
 class MigrationStagingRecord(models.Model):

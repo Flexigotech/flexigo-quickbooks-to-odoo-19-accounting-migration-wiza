@@ -4,7 +4,7 @@
     'images': ["static/description/fgt/cover.gif"],
     'support': 'comercial@flexigotech.com',
     'name': 'QuickBooks Migration Odoo',
-    'version': '18.0.1.1.1',
+    'version': '18.0.1.1.2',
     'category': 'Accounting/Data Migration',
     'license': 'OPL-1',
     'price': 9.0,
