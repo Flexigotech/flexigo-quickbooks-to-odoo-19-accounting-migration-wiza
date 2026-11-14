@@ -11,6 +11,7 @@
 - QuickBooks Migration / Reviewer signs off the reconciliation; other internal users only read it.
 - A Migration Manager deletes the staging (with the personal data of customers and vendors) of a loaded project."""
 import base64
+import gzip
 from unittest.mock import patch
 
 from lxml import etree
@@ -50,6 +51,9 @@ IIF = '\r\n'.join([
 ])
 
 PDF = b'%PDF-1.7\x00\x81\x8d binary'
+# R-k 524: a picture whose bytes read as a line break inside a quoted value, and an archive (csv.Error before)
+GIF = (b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00'
+       b'\x01\x00\x01\x00\x00\x02\x02D\x01\x00;' + b'\r\n\r"x\ryy\n' * 3)
 
 
 def _b64(text, encoding='cp1252'):
@@ -104,7 +108,11 @@ class TestQbDesktop(RelayStandIn, TransactionCase):
         for vals, says in (({'qbdt_file': False}, 'Upload the IIF export'),
                            ({'qbdt_file': base64.b64encode(PDF).decode(), 'qbdt_filename': 'x.pdf'},
                             'x.pdf has no account, class, customer, vendor or item list'),
-                           ({'qbdt_file': _b64('!TRNS\tTRNSID\nTRNS\t1\n')}, 'has no account')):
+                           ({'qbdt_file': _b64('!TRNS\tTRNSID\nTRNS\t1\n')}, 'has no account'),
+                           ({'qbdt_file': base64.b64encode(GIF).decode(), 'qbdt_filename': 'logo.gif'},
+                            'logo.gif cannot be read as an IIF export'),
+                           ({'qbdt_file': base64.b64encode(gzip.compress(IIF.encode() + GIF, mtime=0)).decode(),
+                             'qbdt_filename': 'lists.iif.gz'}, 'lists.iif.gz')):
             with self.subTest(says=says):
                 self.connection.write(vals)
                 note = self.connection.with_user(self.manager).action_test_connection()
@@ -115,6 +123,14 @@ class TestQbDesktop(RelayStandIn, TransactionCase):
                     self.env['migration.run'].create({
                         'project_id': self.project.id, 'run_type': 'extract',
                         'source_ref': 'qb.connection,%d' % self.connection.id}).action_extract()
+
+    def test_02b_a_value_over_128_kb_is_read(self):
+        """Odoo raises csv's field limit to 500 MB (R-k 524 saw a csv.Error outside Odoo): Test Connection answers."""
+        self.connection.write({'qbdt_file': _b64('!ACCNT\tNAME\tACCNTTYPE\nACCNT\t%s\tBANK\n' % ('x' * 140000)),
+                               'qbdt_filename': 'big.iif'})
+        note = self.connection.with_user(self.manager).action_test_connection()
+        self.assertEqual(note['params']['type'], 'success')
+        self.assertIn('Extract reads 1 accounts', note['params']['message'])
 
     def test_03_extract_and_load_take_the_lists_like_quickbooks_online(self):
         run = self._engine('extract')
@@ -368,3 +384,32 @@ class TestQbSignOffAndStaging(TransactionCase):
         with self.assertRaisesRegex(UserError, 'once it is loaded'):
             draft.with_user(self.manager).action_qb_delete_staging()
         self.assertEqual(len(staged.exists()), 2)
+
+    def test_05_nobody_signs_off_by_hand(self):
+        """R-k 524: a Migration Manager may edit the line, but not sign it in the reviewer's name."""
+        line = self.line.with_user(self.manager)
+        for vals in ({'signed_off': True, 'signed_off_by': self.reviewer.id}, {'signed_off_by': self.reviewer.id},
+                     {'signed_off_date': '2026-11-14 08:00:00'}):
+            with self.subTest(vals=vals), self.assertRaises(AccessError):
+                line.write(vals)
+        with self.assertRaises(AccessError):
+            self.env['migration.reconciliation'].with_user(self.manager).create({
+                'project_id': self.project.id, 'reconciliation_type': 'ar_aging', 'account_code': '1200',
+                'signed_off': True, 'signed_off_by': self.reviewer.id})
+        new = self.env['migration.reconciliation'].with_user(self.manager).create({
+            'project_id': self.project.id, 'reconciliation_type': 'ar_aging', 'account_code': '1200',
+            'signed_off': False})
+        line.write({'target_amount': 90.0})
+        self.assertEqual((self.line.signed_off, self.line.signed_off_by, new.signed_off, self.line.variance),
+                         (False, self.env['res.users'], False, 10.0))
+        self.line.with_user(self.reviewer).action_qb_sign_off()
+        with self.assertRaises(AccessError):
+            line.write({'signed_off': False})
+        self.assertEqual(self.line.signed_off_by, self.reviewer)
+
+    def test_06_staging_and_links_are_not_deleted_one_by_one(self):
+        staged, link = self._loaded_project()
+        for record in (staged[0], link):
+            with self.subTest(model=record._name), self.assertRaises(AccessError):
+                record.with_user(self.manager).unlink()
+        self.assertEqual((len(staged.exists()), bool(link.exists())), (2, True))
