@@ -25,15 +25,20 @@ QBO_HOSTS = {False: 'https://quickbooks.api.intuit.com', True: 'https://sandbox-
 # (QuickBooks entity, WHERE of its query, field of the name, field of the code). Then the Trial Balance report, staged as
 # 'custom' (the staging has no type for a report). Intuit's query syntax and pages: developer.intuit.com/quickbooks-online/
 # docs/learn/explore-the-quickbooks-online-api/data-queries (MAXRESULTS is 1000 at most; STARTPOSITION starts at 1).
+# Cola 1416: a list entity made inactive is soft-deleted and its references stay (a balance of the Trial Balance, the
+# customer of an open invoice), but «If you query and don't filter for "inactive" entities, the server only returns
+# results for "active" entities» (…/learn/explore-the-quickbooks-online-api, «Doing soft deletes»): the lists ask for
+# both, and what is inactive is loaded archived. A tax code is only mapped (never loaded): the inactive ones are not asked.
+ACTIVE_TOO = 'Active IN (true, false)'
 QBO_ENTITIES = {
-    'account': ('Account', '', 'FullyQualifiedName', 'AcctNum'),
+    'account': ('Account', ACTIVE_TOO, 'FullyQualifiedName', 'AcctNum'),
     'taxcode': ('TaxCode', '', 'Name', None),
-    'term': ('Term', '', 'Name', None),
-    'class': ('Class', '', 'FullyQualifiedName', None),
-    'location': ('Department', '', 'FullyQualifiedName', None),
-    'customer': ('Customer', '', 'DisplayName', None),
-    'vendor': ('Vendor', '', 'DisplayName', None),
-    'item': ('Item', '', 'FullyQualifiedName', 'Sku'),
+    'term': ('Term', ACTIVE_TOO, 'Name', None),
+    'class': ('Class', ACTIVE_TOO, 'FullyQualifiedName', None),
+    'location': ('Department', ACTIVE_TOO, 'FullyQualifiedName', None),
+    'customer': ('Customer', ACTIVE_TOO, 'DisplayName', None),
+    'vendor': ('Vendor', ACTIVE_TOO, 'DisplayName', None),
+    'item': ('Item', ACTIVE_TOO, 'FullyQualifiedName', 'Sku'),
     'invoice': ('Invoice', "Balance > '0'", 'CustomerRef', 'DocNumber'),   # open ones only
     # every credit note: what is left of it cannot be asked for (RemainingCredit is not filterable, VendorCredit.Balance
     # only in QBW: Finance.xsd); the opening skips the ones at 0
@@ -530,6 +535,8 @@ class QbConnection(models.Model):
         if account:
             return self._qb_existing(staging, account)
         if not mapped.target_code:
+            if not staging.normalized_active:   # inactive and unmapped: if the Trial Balance needs it, it says so
+                return None
             raise UserError(_('No account of %(company)s has the number of %(account)s: map it in the mapping set of '
                               'the project to an account, or to the code of a new one.', company=company.name,
                               account=staging.normalized_name))
@@ -547,6 +554,8 @@ class QbConnection(models.Model):
         DiscountDays). A date-driven one (DayOfMonthDue, DueNextMonthDays: Finance.xsd, SalesTerm) has a cut-off no
         line of Odoo has, so it is said instead of loaded wrong."""
         if row.get('DueDays') is None:
+            if not staging.normalized_active:   # an old date-driven term: nothing loaded refers to it
+                return None
             raise UserError(_('A date-driven term (due on a day of the month, next month after a cut-off) has no '
                               'payment term in Odoo that says the same: create it by hand.'))
         discount = bool(row.get('DiscountPercent') and row.get('DiscountDays'))
@@ -571,6 +580,8 @@ class QbConnection(models.Model):
         if dimension.analytic_account_id:
             return self._qb_existing(staging, dimension.analytic_account_id)
         if not dimension.analytic_plan_id:
+            if not staging.normalized_active:   # an old class or location nobody mapped: nothing loaded refers to it
+                return None
             raise UserError(_('Map %s to an analytic plan or account in the dimension mapping, or mark it Do Not '
                               'Migrate.', staging.normalized_name))
         return 'account.analytic.account', {'name': staging.normalized_name, 'plan_id': dimension.analytic_plan_id.id,
@@ -731,7 +742,9 @@ class QbConnection(models.Model):
                 aging = Account.browse(account_id).account_type in QBO_AGING
                 lines.append({'account_id': account_id, 'balance': rest, 'name': _(
                     'QuickBooks balance not covered by open items') if aging else _('QuickBooks opening balance')})
-        move = self.env['account.move'].with_company(company).create(dict(
+        # an account inactive in QuickBooks is archived (deprecated in 17/18) in Odoo and still has its balance
+        Move = self.env['account.move'].with_company(company).with_context(skip_account_deprecation_check=True)
+        move = Move.create(dict(
             company._get_default_opening_move_values(), date=cutoff,
             ref=_('QuickBooks opening balance at %s', cutoff), line_ids=[Command.create(line) for line in lines]))
         move.action_post()
