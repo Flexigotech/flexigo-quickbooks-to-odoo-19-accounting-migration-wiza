@@ -21,18 +21,30 @@ from odoo.addons.flexigotech_cloud.exceptions import FlexigotechRelayError, Flex
 from .test_fgt_cloud import MODULE, RelayStandIn, _response
 
 QUERY = re.compile(r"SELECT \* FROM (\w+)(?: WHERE (.+))? STARTPOSITION (\d+) MAXRESULTS (\d+)")
+# Intuit soft-deletes a list entity (Active false) and keeps the references to it: «If you query and don't filter for
+# "inactive" entities, the server only returns results for "active" entities»; all of them with WHERE Active IN (true,
+# false) (developer.intuit.com/quickbooks-online/docs/learn/explore-the-quickbooks-online-api, «Doing soft deletes»,
+# and …/explore-the-quickbooks-online-api/data-queries, «More filter examples»)
+ACTIVE_TOO = 'Active IN (true, false)'
+
+
+def _queried(rows, where):
+    """The rows Intuit's query answers: the inactive ones only when the WHERE asks for them."""
+    return [row for row in rows if row.get('Active') is not False or where == ACTIVE_TOO]
+
+
 TYPES = ['account', 'taxcode', 'term', 'class', 'location', 'customer', 'vendor', 'item', 'invoice', 'creditmemo',
          'bill', 'vendorcredit', 'custom']
 QUERIES = [
-    "SELECT * FROM Account STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Account WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM TaxCode STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Term STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Class STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Department STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Customer STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Customer STARTPOSITION 1001 MAXRESULTS 1000",
-    "SELECT * FROM Vendor STARTPOSITION 1 MAXRESULTS 1000",
-    "SELECT * FROM Item STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Term WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Class WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Department WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Customer WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Customer WHERE Active IN (true, false) STARTPOSITION 1001 MAXRESULTS 1000",
+    "SELECT * FROM Vendor WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
+    "SELECT * FROM Item WHERE Active IN (true, false) STARTPOSITION 1 MAXRESULTS 1000",
     "SELECT * FROM Invoice WHERE Balance > '0' STARTPOSITION 1 MAXRESULTS 1000",
     # every credit note: RemainingCredit is not filterable and VendorCredit.Balance only in QBW (Finance.xsd)
     "SELECT * FROM CreditMemo STARTPOSITION 1 MAXRESULTS 1000",
@@ -117,13 +129,13 @@ class TestQbExtract(RelayStandIn, TransactionCase):
         if path == 'v3/company/9130/reports/InventoryValuationSummary':
             return _response(200, _inventory_valuation(params['report_date']))
         self.assertEqual(path, 'v3/company/9130/query')
-        entity, _where, start, size = QUERY.fullmatch(params['query']).groups()
+        entity, where, start, size = QUERY.fullmatch(params['query']).groups()
         key = (entity, int(start))
         if key in self.refuse:
             raise self.refuse.pop(key)
         if key in self.answers:
             return self.answers.pop(key)
-        rows = self.intuit[entity][int(start) - 1:int(start) - 1 + int(size)]
+        rows = _queried(self.intuit[entity], where)[int(start) - 1:int(start) - 1 + int(size)]
         page = {entity: rows, 'startPosition': int(start), 'maxResults': len(rows)} if rows else {}
         return _response(200, {'QueryResponse': page, 'time': '2026-11-06T04:00:00.000-07:00'})
 
@@ -299,6 +311,22 @@ class TestQbExtract(RelayStandIn, TransactionCase):
                 self.assertEqual((run.cursor, run.pending_objects[0]), (1001, 'customer'))
                 self.assertIn('QuickBooks', run.error_messages)
                 self.health.assert_not_called()
+
+    def test_10_the_inactive_accounts_customers_vendors_and_lists_are_extracted_too(self):
+        """Cola 1416: what was made inactive in QuickBooks is still referenced by the Trial Balance and the open items
+        (Intuit keeps the references), so it is extracted, inactive, like the rest. A tax code is only mapped, never
+        loaded: an inactive one is not asked for."""
+        for entity in ('Account', 'TaxCode', 'Term', 'Class', 'Department', 'Customer', 'Vendor', 'Item'):
+            self.intuit[entity] = [*self.intuit[entity][:1], {
+                'Id': '9%d' % len(entity), 'Name': 'Old %s' % entity, 'DisplayName': 'Old %s' % entity,
+                'FullyQualifiedName': 'Old %s' % entity, 'DueDays': 30, 'Active': False}]
+        run = self._run(self._new(fgt_consent=True))
+        run.action_extract()
+        self.assertEqual(self._cron(run), 'done', run.error_messages)
+        inactive = self._staged().filtered(lambda s: not s.normalized_active)
+        self.assertEqual(sorted((s.object_type, s.normalized_name) for s in inactive), [
+            ('account', 'Old Account'), ('class', 'Old Class'), ('customer', 'Old Customer'),
+            ('item', 'Old Item'), ('location', 'Old Department'), ('term', 'Old Term'), ('vendor', 'Old Vendor')])
 
     def test_09_another_intuit_app_or_the_sandbox_on_a_saved_cloud_connection_needs_a_new_connection(self):
         connection = self._new(fgt_consent=True, fgt_client_secret='the-secret')
