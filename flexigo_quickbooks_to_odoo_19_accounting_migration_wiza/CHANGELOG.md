@@ -1,5 +1,13 @@
 # Changelog — QuickBooks to Odoo Migration Wizard
 
+## 18.0.1.1.3 (unreleased)
+- Inactive accounts, customers, vendors, items, payment terms, classes and departments of QuickBooks Online are
+  extracted too (QuickBooks only gives the inactive ones when asked) and loaded archived. Before, an inactive account
+  with a balance in the Trial Balance, or an inactive customer or vendor with an open invoice or bill, stopped the
+  opening entry and mapping them did not help; now the opening posts on them and ties out. An inactive account,
+  class, department or date-driven term that nobody mapped stays out without an error: if the Trial Balance needs
+  the account, it says so. Inactive tax codes are not asked for (a tax code is only mapped).
+
 ## 18.0.1.1.2 (unreleased)
 - A signed reconciliation line whose figures change afterwards (its amounts, tolerance or account, edited by hand or
   brought by a new load) is no longer signed: the reviewer signs it again. The same figures, the name of the account

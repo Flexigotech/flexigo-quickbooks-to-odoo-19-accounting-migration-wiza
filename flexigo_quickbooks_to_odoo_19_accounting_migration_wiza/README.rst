@@ -72,7 +72,8 @@ Migrating
 
 1. **Project** (Migration > Migration Projects): its company is where everything is loaded.
 2. **Extract** (a migration run of type Extract, with the connection): the records go into the staging of the
-   project, 1,000 a page, as QuickBooks gives them. Nothing is written in your accounting yet: look at the staging
+   project, 1,000 a page, as QuickBooks gives them, the inactive accounts, customers, vendors, items, terms, classes
+   and departments too (an inactive account can still have a balance, an inactive customer an open invoice). Nothing is written in your accounting yet: look at the staging
    (Migration > Staging) and set your mappings before loading. This is the check before
    the load; there is no other dry-run mode.
 3. **Mappings** (the mapping set of the project): accounts by an Account Type value (source: the Id, number or name
@@ -82,7 +83,8 @@ Migrating
 4. **Load** (a migration run of type Load): creates the records in the company of the project, archived when they are
    inactive in QuickBooks. Loading again updates the same records, never creates again what you deleted, and posts
    the opening entry and the stock only once. What cannot be loaded (an unmapped account, class or department, a
-   date-driven payment term) is listed in the run instead of being guessed. A tax code is never created as a tax.
+   date-driven payment term) is listed in the run instead of being guessed; when it is inactive in QuickBooks it
+   stays out quietly, unless the Trial Balance needs the account. A tax code is never created as a tax.
 5. **Reconcile**: the reconciliation of the project shows QuickBooks against Odoo; a difference of more than 0.01
    blocks the Reconciled status. Members of QuickBooks Migration / Reviewer sign off each line with Sign Off. If a
    signed figure changes afterwards (someone edits the amounts, the tolerance or the account of the line, or a new
