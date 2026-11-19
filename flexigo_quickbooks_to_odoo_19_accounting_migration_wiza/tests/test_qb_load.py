@@ -12,7 +12,7 @@ from odoo import Command
 from odoo.tests import TransactionCase, tagged
 
 from .test_fgt_cloud import RelayStandIn, _response
-from .test_qb_extract import QUERY, _inventory_valuation, _trial_balance
+from .test_qb_extract import QUERY, _inventory_valuation, _queried, _trial_balance
 
 
 def _ref(value, name):
@@ -125,8 +125,8 @@ class TestQbLoad(RelayStandIn, TransactionCase):
             return _response(200, _trial_balance(params['end_date']))
         if path == 'v3/company/9130/reports/InventoryValuationSummary':   # no stock: test_qb_stock
             return _response(200, _inventory_valuation(params['report_date']))
-        entity, _where, start, _size = QUERY.fullmatch(params['query']).groups()
-        rows = self.intuit[entity] if start == '1' else []
+        entity, where, start, _size = QUERY.fullmatch(params['query']).groups()
+        rows = _queried(self.intuit[entity], where) if start == '1' else []
         return _response(200, {'QueryResponse': {entity: rows} if rows else {}})
 
     def _engine(self, run_type):
@@ -274,3 +274,29 @@ class TestQbLoad(RelayStandIn, TransactionCase):
         # account for the open invoice) makes no opening entry (test_qb_opening)
         self.assertEqual(load.records_failed, 4)
         self.assertIn('custom TrialBalance: ', load.error_messages)
+
+    def test_09_inactive_records_come_archived_and_the_ones_nobody_mapped_stay_out_quietly(self):
+        """Cola 1416: QuickBooks soft-deletes (Active false). What is inactive comes archived (test_01, 05-08: the
+        account Old Loans, Bob's Burger Joint, Design, Net 60 (old), Garden). An inactive account, class or term that
+        cannot be placed without a mapping of the user (no account number in the chart, no dimension mapping, due on
+        a day of the month) stays out without an error: nothing needs it, and when the Trial Balance does, its error
+        names it (test_qb_opening)."""
+        self.intuit['Account'].append({'Id': '96', 'Name': 'Old petty cash', 'FullyQualifiedName': 'Old petty cash',
+                                       'AccountType': 'Bank', 'AccountSubType': 'CashOnHand', 'Active': False})
+        self.intuit['Class'].append({'Id': '9', 'Name': 'Old region', 'FullyQualifiedName': 'Old region',
+                                     'Active': False})
+        self.intuit['Term'].append({'Id': '7', 'Name': 'On the 10th (old)', 'DayOfMonthDue': 10, 'Active': False})
+        load = self._load()
+        staged = self.env['migration.staging.record'].search([
+            ('project_id', '=', self.project.id), ('normalized_active', '=', False)])
+        self.assertEqual(sorted((s.object_type, s.source_id) for s in staged), [
+            ('account', '81'), ('account', '96'), ('class', '9'), ('item', '13'), ('location', '1'), ('term', '5'),
+            ('term', '7'), ('vendor', '56')])
+        loans = self._loaded('account', '81')
+        self.assertTrue(loans.deprecated if 'deprecated' in loans._fields else not loans.active)
+        self.assertEqual([self._loaded(t, i).active for t, i in (('vendor', '56'), ('item', '13'), ('term', '5'),
+                                                                   ('location', '1'))], [False] * 4)
+        for object_type, source_id in (('account', '96'), ('class', '9'), ('term', '7')):
+            self.assertFalse(self._loaded(object_type, source_id))
+            self.assertNotIn('%s %s:' % (object_type, source_id), load.error_messages)
+        self.assertEqual(load.records_failed, 4, load.error_messages)   # the same four as test_08
