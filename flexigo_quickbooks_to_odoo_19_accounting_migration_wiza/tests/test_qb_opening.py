@@ -13,7 +13,7 @@ from odoo.tests import TransactionCase, tagged
 
 from . import test_qb_load
 from .test_fgt_cloud import RelayStandIn, _response
-from .test_qb_extract import QUERY, _inventory_valuation
+from .test_qb_extract import QUERY, _inventory_valuation, _queried
 
 CUTOFF = '2026-10-31'
 
@@ -100,8 +100,8 @@ class TestQbOpening(RelayStandIn, TransactionCase):
                 'Rows': {'Row': [*self.trial_balance, total]}})
         if path.endswith('/reports/InventoryValuationSummary'):
             return _response(200, _inventory_valuation(CUTOFF, self.inventory))
-        entity, _where, start, _size = QUERY.fullmatch(params['query']).groups()
-        rows = self.intuit[entity] if start == '1' else []
+        entity, where, start, _size = QUERY.fullmatch(params['query']).groups()
+        rows = _queried(self.intuit[entity], where) if start == '1' else []
         return _response(200, {'QueryResponse': {entity: rows} if rows else {}})
 
     def _moves(self):
@@ -304,3 +304,38 @@ class TestQbOpening(RelayStandIn, TransactionCase):
         self.assertFalse(self._loaded('custom', 'TrialBalance'))
         self.assertIn('QB opening', load.error_messages)
         self.assertIn('already', load.error_messages)
+
+    def test_12_an_inactive_account_with_a_balance_and_an_inactive_customer_with_an_open_invoice(self):
+        """Cola 1416: QuickBooks soft-deletes an account or a customer and keeps the references to it, so the Trial
+        Balance at the cut-off can have a balance on an inactive account and an open invoice an inactive customer.
+        Before 1.1.3 neither was extracted and the load stopped for good (mapping them did not help: they never came).
+        Now the account comes archived (deprecated in 17 and 18), the customer archived, and the opening posts on them
+        and ties out."""
+        self.intuit['Account'].append({'Id': '95', 'Name': 'Old savings', 'FullyQualifiedName': 'Old savings',
+                                       'AcctNum': 'QB1020', 'AccountType': 'Bank', 'Active': False})
+        self.intuit['Customer'].append({'Id': '3', 'DisplayName': 'Closed shop', 'Active': False})
+        self.intuit['Invoice'].append({'Id': '132', 'DocNumber': '1039', 'CustomerRef': _ref('3', 'Closed shop'),
+                                       'DueDate': '2026-11-10', 'TotalAmt': 80.0, 'Balance': 80.0})
+        # the user gives the code of the account to create for it (no account of the chart has QB1020)
+        self.project.mapping_set_id = self.env['migration.mapping.set'].create({
+            'name': 'QB opening map', 'version': '1416', 'project_id': self.project.id})
+        self.env['migration.mapping.value'].create({
+            'mapping_set_id': self.project.mapping_set_id.id, 'category': 'account_type', 'source_value': '95',
+            'target_model': 'account.account', 'target_code': 'QB1020'})
+        # debit 1000 + 500 + 200 + 50 = credit 108.09 + 1041.91 + 600 = 1750
+        self.trial_balance[1] = _row('84', 'Accounts Receivable (A/R)', '500.00')
+        self.trial_balance[4] = _row('92', 'Retained Earnings', credit='1041.91')
+        self.trial_balance.append(_row('95', 'Old savings (deleted)', '50.00'))
+        load = self._load()
+        move = self._loaded('custom', 'TrialBalance')
+        self.assertEqual(move.state, 'posted', load.error_messages)
+        savings, shop = self._loaded('account', '95'), self._loaded('customer', '3')
+        self.assertEqual(savings.code, 'QB1020')
+        self.assertTrue(savings.deprecated if 'deprecated' in savings._fields else not savings.active)
+        self.assertFalse(shop.active)
+        self.assertEqual(sum(move.line_ids.filtered(lambda line: line.account_id == savings).mapped('balance')), 50.0)
+        self.assertIn(('1039', shop.id, 80.0), [(line.name, line.partner_id.id, line.balance)
+                                                for line in self._lines('QB1200')])
+        self.assertEqual(self._tie_out('trial_balance', 'QB1020'), (50.0, 50.0, False))
+        self.assertEqual(self._tie_out('ar_aging', 'QB1200'), (500.0, 500.0, False))
+        self.assertFalse(self.project.reconciliation_line_ids.filtered('is_blocking'))
